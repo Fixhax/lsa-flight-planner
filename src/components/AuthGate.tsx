@@ -11,6 +11,19 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
+  // An invite or password-reset email link lands here with #...&type=invite
+  // (or type=recovery) in the URL — supabase-js signs the session in
+  // automatically from that token, but the account has no password yet
+  // (invite links) or the old one needs replacing (recovery links). Catch
+  // that up front, before the hash gets consumed, so we know to show the
+  // "set a password" screen instead of the normal app.
+  const [needsNewPassword, setNeedsNewPassword] = useState(
+    () => authConfigured && /type=(invite|recovery)/.test(window.location.hash)
+  )
+  const [newPassword, setNewPassword] = useState('')
+  const [newPasswordError, setNewPasswordError] = useState<string | null>(null)
+  const [newPasswordSubmitting, setNewPasswordSubmitting] = useState(false)
+
   useEffect(() => {
     if (!supabase) return
 
@@ -19,8 +32,9 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       setLoading(false)
     })
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession)
+      if (event === 'PASSWORD_RECOVERY') setNeedsNewPassword(true)
     })
 
     return () => listener.subscription.unsubscribe()
@@ -34,6 +48,54 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     return (
       <div className="auth-screen">
         <p className="footnote">Checking sign-in status&hellip;</p>
+      </div>
+    )
+  }
+
+  if (session && needsNewPassword) {
+    async function handleSetPassword(e: FormEvent) {
+      e.preventDefault()
+      if (!supabase) return
+      setNewPasswordSubmitting(true)
+      setNewPasswordError(null)
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword })
+      if (updateError) {
+        setNewPasswordError(updateError.message)
+      } else {
+        setNeedsNewPassword(false)
+        // Drop the invite/recovery token from the address bar now that it's
+        // been used, so refreshing doesn't try to process it again.
+        history.replaceState(null, '', window.location.pathname)
+      }
+      setNewPasswordSubmitting(false)
+    }
+
+    return (
+      <div className="auth-screen">
+        <form className="auth-card" onSubmit={handleSetPassword}>
+          <div className="brand auth-brand">
+            LSA <span>Planner</span>
+          </div>
+          <p className="footnote">
+            Set a password for your account &mdash; you'll use it to sign in from now on.
+          </p>
+          <div className="field">
+            <label htmlFor="new-password">New password</label>
+            <input
+              id="new-password"
+              type="password"
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              minLength={6}
+              required
+            />
+          </div>
+          {newPasswordError && <p className="auth-error">{newPasswordError}</p>}
+          <button type="submit" className="auth-submit" disabled={newPasswordSubmitting}>
+            {newPasswordSubmitting ? 'Saving…' : 'Set password'}
+          </button>
+        </form>
       </div>
     )
   }
