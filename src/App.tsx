@@ -25,6 +25,7 @@ import SectionMenu from './components/SectionMenu'
 import WeatherReport from './components/WeatherReport'
 import RadioFrequencies from './components/RadioFrequencies'
 import { computeTrafficPattern, parseRunwayEnds } from './lib/trafficPattern'
+import { loadPersistedPlan, savePersistedPlan } from './lib/persistence'
 
 let nextId = 1
 function makeWaypoint(strip?: AirstripEntry): Waypoint {
@@ -91,27 +92,87 @@ const SECTION_GROUPS: { label: string; sections: { id: string; label: string }[]
 ]
 
 export default function App() {
-  const [aircraftId, setAircraftId] = useState(aircraftRegistry[0].id)
-  const [waypoints, setWaypoints] = useState<Waypoint[]>([makeWaypoint(), makeWaypoint()])
-  const [wind, setWind] = useState<Wind>({ directionTrueDeg: 0, speedKt: 0 })
-  const [cruiseSpeedKt, setCruiseSpeedKt] = useState(aircraftRegistry[0].cruiseTasKt)
-  const [cruiseAltitudeFt, setCruiseAltitudeFt] = useState(2000)
-  const [speedUnit, setSpeedUnit] = useState<SpeedUnit>('kt')
-  const [windSpeedUnit, setWindSpeedUnit] = useState<SpeedUnit>('kt')
-  const [extendedTanks, setExtendedTanks] = useState(false)
-  const [fuelOnBoardL, setFuelOnBoardL] = useState(
-    aircraftRegistry[0].fuelCapacityL - aircraftRegistry[0].unusableFuelL
+  const persisted = loadPersistedPlan()
+
+  const [aircraftId, setAircraftId] = useState(persisted?.aircraftId ?? aircraftRegistry[0].id)
+  const [waypoints, setWaypoints] = useState<Waypoint[]>(
+    (persisted?.waypoints as Waypoint[] | undefined)?.length
+      ? (persisted!.waypoints as Waypoint[])
+      : [makeWaypoint(), makeWaypoint()]
   )
-  const [reserveMinutes, setReserveMinutes] = useState(aircraftRegistry[0].reserveMinutes)
-  const [pilotKg, setPilotKg] = useState(80)
-  const [passengerKg, setPassengerKg] = useState(0)
-  const [luggageKg, setLuggageKg] = useState(0)
-  const [mtowKg, setMtowKg] = useState(aircraftRegistry[0].maxTakeoffWeightKg)
+  const [wind, setWind] = useState<Wind>(persisted?.wind ?? { directionTrueDeg: 0, speedKt: 0 })
+  const [cruiseSpeedKt, setCruiseSpeedKt] = useState(
+    persisted?.cruiseSpeedKt ?? aircraftRegistry[0].cruiseTasKt
+  )
+  const [cruiseAltitudeFt, setCruiseAltitudeFt] = useState(persisted?.cruiseAltitudeFt ?? 2000)
+  const [speedUnit, setSpeedUnit] = useState<SpeedUnit>((persisted?.speedUnit as SpeedUnit) ?? 'kt')
+  const [windSpeedUnit, setWindSpeedUnit] = useState<SpeedUnit>(
+    (persisted?.windSpeedUnit as SpeedUnit) ?? 'kt'
+  )
+  const [extendedTanks, setExtendedTanks] = useState(persisted?.extendedTanks ?? false)
+  const [fuelOnBoardL, setFuelOnBoardL] = useState(
+    persisted?.fuelOnBoardL ?? aircraftRegistry[0].fuelCapacityL - aircraftRegistry[0].unusableFuelL
+  )
+  const [reserveMinutes, setReserveMinutes] = useState(
+    persisted?.reserveMinutes ?? aircraftRegistry[0].reserveMinutes
+  )
+  const [pilotKg, setPilotKg] = useState(persisted?.pilotKg ?? 80)
+  const [passengerKg, setPassengerKg] = useState(persisted?.passengerKg ?? 0)
+  const [luggageKg, setLuggageKg] = useState(persisted?.luggageKg ?? 0)
+  const [mtowKg, setMtowKg] = useState(persisted?.mtowKg ?? aircraftRegistry[0].maxTakeoffWeightKg)
+
+  // Keep the plan safe across refreshes — deliberately excludes transient
+  // things like GPS position, timer sessions, and which panels are open.
+  useEffect(() => {
+    savePersistedPlan({
+      aircraftId,
+      waypoints,
+      wind,
+      cruiseSpeedKt,
+      cruiseAltitudeFt,
+      speedUnit,
+      windSpeedUnit,
+      extendedTanks,
+      fuelOnBoardL,
+      reserveMinutes,
+      pilotKg,
+      passengerKg,
+      luggageKg,
+      mtowKg
+    })
+  }, [
+    aircraftId,
+    waypoints,
+    wind,
+    cruiseSpeedKt,
+    cruiseAltitudeFt,
+    speedUnit,
+    windSpeedUnit,
+    extendedTanks,
+    fuelOnBoardL,
+    reserveMinutes,
+    pilotKg,
+    passengerKg,
+    luggageKg,
+    mtowKg
+  ])
+
   const [livePosition, setLivePosition] = useState<LivePosition | null>(null)
   const [liveStatus, setLiveStatus] = useState<string | null>(null)
   const [timerStatus, setTimerStatus] = useState<string | null>(null)
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['aircraft']))
   const [isMapFullscreen, setIsMapFullscreen] = useState(false)
+
+  // Guaranteed fallback exit — regardless of what else might go wrong with
+  // the on-screen buttons, Escape always works.
+  useEffect(() => {
+    if (!isMapFullscreen) return
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setIsMapFullscreen(false)
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [isMapFullscreen])
 
   const timer = useFlightTimer(setTimerStatus)
   const gps = useGpsTracking(setLivePosition, setLiveStatus)
@@ -449,7 +510,10 @@ export default function App() {
         <GlideSummary glide={glide} aircraft={aircraft} altitudeFt={cruiseAltitudeFt} />
       </section>
 
-      <section className="panel" style={{ display: openSections.has('route') ? undefined : 'none' }}>
+      <section
+        className="panel"
+        style={{ display: openSections.has('route') || isMapFullscreen ? undefined : 'none' }}
+      >
         <p className="panel-label">Route</p>
         <RouteMap
           waypoints={waypoints}
