@@ -334,10 +334,16 @@ export default function RouteMap({
     return () => cancelAnimationFrame(id)
   }, [visible, fullscreen])
 
-  return (
-    <div
-      ref={containerRef}
-      className={fullscreen ? 'route-map route-map-fullscreen' : 'route-map'}
-    />
-  )
+  // Toggle the fullscreen class directly via classList instead of through
+  // React's className prop. Leaflet adds its own classes (leaflet-container,
+  // leaflet-touch, etc.) straight to this DOM node outside of React's
+  // knowledge — if className were re-rendered as a template string here,
+  // React would overwrite the whole attribute and wipe those out, which
+  // broke Leaflet's own layout containment (overflow: hidden) and left the
+  // map spilling over the rest of the page after leaving fullscreen.
+  useEffect(() => {
+    containerRef.current?.classList.toggle('route-map-fullscreen', fullscreen)
+  }, [fullscreen])
+
+  return <div ref={containerRef} className="route-map" />
 }
