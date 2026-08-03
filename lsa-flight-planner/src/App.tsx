@@ -7,7 +7,7 @@ import NavLogView from './components/NavLog'
 import StripSearch from './components/StripSearch'
 import WeightSummary from './components/WeightSummary'
 import RouteMap from './components/RouteMap'
-import type { AirstripEntry } from './data/strips'
+import { airstrips, type AirstripEntry } from './data/strips'
 import { ktToUnit, unitToKt, speedUnitLabel, type SpeedUnit } from './lib/units'
 import { computeWeight } from './lib/weight'
 import { computeGlide } from './lib/glide'
@@ -15,6 +15,17 @@ import GlideSummary from './components/GlideSummary'
 import WeatherFetch from './components/WeatherFetch'
 import DaylightInfo from './components/DaylightInfo'
 import FlightPlanTool from './components/FlightPlanTool'
+import FlightTimer from './components/FlightTimer'
+import TimerActionBar from './components/TimerActionBar'
+import { useFlightTimer } from './hooks/useFlightTimer'
+import { useGpsTracking } from './hooks/useGpsTracking'
+import { loadPersistedPlan, savePersistedPlan } from './lib/persistence'
+import LiveTracking from './components/LiveTracking'
+import type { LivePosition } from './lib/liveTracking'
+import SectionMenu from './components/SectionMenu'
+import WeatherReport from './components/WeatherReport'
+import RadioFrequencies from './components/RadioFrequencies'
+import { computeTrafficPattern, parseRunwayEnds } from './lib/trafficPattern'
 
 let nextId = 1
 function makeWaypoint(strip?: AirstripEntry): Waypoint {
@@ -28,7 +39,8 @@ function makeWaypoint(strip?: AirstripEntry): Waypoint {
     pprContact: strip?.pprContact,
     country: strip?.country,
     icao: strip?.icao,
-    customsCleared: strip?.customsCleared
+    customsCleared: strip?.customsCleared,
+    frequencies: strip?.frequencies
   }
 }
 
@@ -41,23 +53,150 @@ const SPEED_UNIT_OPTIONS: { value: SpeedUnit; label: string }[] = [
 
 const MTOW_OPTIONS_KG = [450, 560, 600]
 
+const SECTION_GROUPS: { label: string; sections: { id: string; label: string }[] }[] = [
+  {
+    label: 'Setup',
+    sections: [
+      { id: 'aircraft', label: 'Aircraft' },
+      { id: 'cruise', label: 'Cruise settings' },
+      { id: 'wind', label: 'Wind' },
+      { id: 'fuel', label: 'Fuel' },
+      { id: 'weight', label: 'Payload & weight' }
+    ]
+  },
+  {
+    label: 'Route & safety',
+    sections: [
+      { id: 'route', label: 'Route & map' },
+      { id: 'glide', label: 'Glide range' },
+      { id: 'live', label: 'Live tracking' },
+      { id: 'weatherreport', label: 'Weather report' },
+      { id: 'frequencies', label: 'Radio frequencies' }
+    ]
+  },
+  {
+    label: 'Results',
+    sections: [
+      { id: 'navlog', label: 'Nav log' },
+      { id: 'totals', label: 'Totals' },
+      { id: 'daylight', label: 'Daylight' }
+    ]
+  },
+  {
+    label: 'Documents',
+    sections: [
+      { id: 'flightplan', label: 'Flight plan' },
+      { id: 'timer', label: 'Flight timer (logbook)' }
+    ]
+  }
+]
+
 export default function App() {
-  const [aircraftId, setAircraftId] = useState(aircraftRegistry[0].id)
-  const [waypoints, setWaypoints] = useState<Waypoint[]>([makeWaypoint(), makeWaypoint()])
-  const [wind, setWind] = useState<Wind>({ directionTrueDeg: 0, speedKt: 0 })
-  const [cruiseSpeedKt, setCruiseSpeedKt] = useState(aircraftRegistry[0].cruiseTasKt)
-  const [cruiseAltitudeFt, setCruiseAltitudeFt] = useState(2000)
-  const [speedUnit, setSpeedUnit] = useState<SpeedUnit>('kt')
-  const [windSpeedUnit, setWindSpeedUnit] = useState<SpeedUnit>('kt')
-  const [extendedTanks, setExtendedTanks] = useState(false)
-  const [fuelOnBoardL, setFuelOnBoardL] = useState(
-    aircraftRegistry[0].fuelCapacityL - aircraftRegistry[0].unusableFuelL
+  const persisted = loadPersistedPlan()
+
+  const [aircraftId, setAircraftId] = useState(persisted?.aircraftId ?? aircraftRegistry[0].id)
+  const [waypoints, setWaypoints] = useState<Waypoint[]>(
+    (persisted?.waypoints as Waypoint[] | undefined)?.length
+      ? (persisted!.waypoints as Waypoint[])
+      : [makeWaypoint(), makeWaypoint()]
   )
-  const [reserveMinutes, setReserveMinutes] = useState(aircraftRegistry[0].reserveMinutes)
-  const [pilotKg, setPilotKg] = useState(80)
-  const [passengerKg, setPassengerKg] = useState(0)
-  const [luggageKg, setLuggageKg] = useState(0)
-  const [mtowKg, setMtowKg] = useState(aircraftRegistry[0].maxTakeoffWeightKg)
+  const [wind, setWind] = useState<Wind>(persisted?.wind ?? { directionTrueDeg: 0, speedKt: 0 })
+  const [cruiseSpeedKt, setCruiseSpeedKt] = useState(
+    persisted?.cruiseSpeedKt ?? aircraftRegistry[0].cruiseTasKt
+  )
+  const [cruiseAltitudeFt, setCruiseAltitudeFt] = useState(persisted?.cruiseAltitudeFt ?? 2000)
+  const [speedUnit, setSpeedUnit] = useState<SpeedUnit>((persisted?.speedUnit as SpeedUnit) ?? 'kt')
+  const [windSpeedUnit, setWindSpeedUnit] = useState<SpeedUnit>(
+    (persisted?.windSpeedUnit as SpeedUnit) ?? 'kt'
+  )
+  const [extendedTanks, setExtendedTanks] = useState(persisted?.extendedTanks ?? false)
+  const [fuelOnBoardL, setFuelOnBoardL] = useState(
+    persisted?.fuelOnBoardL ?? aircraftRegistry[0].fuelCapacityL - aircraftRegistry[0].unusableFuelL
+  )
+  const [reserveMinutes, setReserveMinutes] = useState(
+    persisted?.reserveMinutes ?? aircraftRegistry[0].reserveMinutes
+  )
+  const [pilotKg, setPilotKg] = useState(persisted?.pilotKg ?? 80)
+  const [passengerKg, setPassengerKg] = useState(persisted?.passengerKg ?? 0)
+  const [luggageKg, setLuggageKg] = useState(persisted?.luggageKg ?? 0)
+  const [mtowKg, setMtowKg] = useState(persisted?.mtowKg ?? aircraftRegistry[0].maxTakeoffWeightKg)
+
+  // Keep the plan safe across refreshes — deliberately excludes transient
+  // things like GPS position, timer sessions, and which panels are open.
+  useEffect(() => {
+    savePersistedPlan({
+      aircraftId,
+      waypoints,
+      wind,
+      cruiseSpeedKt,
+      cruiseAltitudeFt,
+      speedUnit,
+      windSpeedUnit,
+      extendedTanks,
+      fuelOnBoardL,
+      reserveMinutes,
+      pilotKg,
+      passengerKg,
+      luggageKg,
+      mtowKg
+    })
+  }, [
+    aircraftId,
+    waypoints,
+    wind,
+    cruiseSpeedKt,
+    cruiseAltitudeFt,
+    speedUnit,
+    windSpeedUnit,
+    extendedTanks,
+    fuelOnBoardL,
+    reserveMinutes,
+    pilotKg,
+    passengerKg,
+    luggageKg,
+    mtowKg
+  ])
+  const [livePosition, setLivePosition] = useState<LivePosition | null>(null)
+  const [liveStatus, setLiveStatus] = useState<string | null>(null)
+  const [timerStatus, setTimerStatus] = useState<string | null>(null)
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['aircraft']))
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false)
+
+  // Guaranteed fallback exit — regardless of what else might go wrong with
+  // the on-screen buttons, Escape always works.
+  useEffect(() => {
+    if (!isMapFullscreen) return
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setIsMapFullscreen(false)
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [isMapFullscreen])
+
+  const timer = useFlightTimer(setTimerStatus)
+  const gps = useGpsTracking(setLivePosition, setLiveStatus)
+
+  // Landing pattern controls — start with nothing selected. Strips with a
+  // known runway are candidates; the rest genuinely can't support this yet.
+  const patternCapableStrips = airstrips.filter((s) => s.runway)
+  const [patternStripId, setPatternStripId] = useState('')
+  const [patternRunwayEnd, setPatternRunwayEnd] = useState<'A' | 'B'>('A')
+  const [patternTrafficSide, setPatternTrafficSide] = useState<'left' | 'right'>('left')
+  const [patternDownwindM, setPatternDownwindM] = useState(1000)
+  const [patternMagVarDeg, setPatternMagVarDeg] = useState(4)
+
+  function toggleSection(id: string) {
+    setOpenSections((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function ensureSectionOpen(id: string) {
+    setOpenSections((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
+  }
 
   const aircraft = getAircraftById(aircraftId) ?? aircraftRegistry[0]
 
@@ -103,6 +242,29 @@ export default function App() {
     [validWaypoints, aircraft, wind, cruiseSpeedKt, usableFuelL, fuelOnBoardL, reserveMinutes]
   )
 
+  const selectedPatternStrip = patternCapableStrips.find((s) => s.id === patternStripId)
+  const trafficPattern = useMemo(() => {
+    if (!selectedPatternStrip?.runway) return null
+    const ends = parseRunwayEnds(selectedPatternStrip.runway)
+    if (!ends) return null
+    const magHeading = patternRunwayEnd === 'A' ? ends.endA : ends.endB
+    return computeTrafficPattern(
+      selectedPatternStrip,
+      selectedPatternStrip.lengthM ?? 500,
+      magHeading,
+      patternMagVarDeg,
+      patternDownwindM,
+      patternTrafficSide
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    selectedPatternStrip,
+    patternRunwayEnd,
+    patternMagVarDeg,
+    patternDownwindM,
+    patternTrafficSide
+  ])
+
   const weight = useMemo(
     () =>
       computeWeight(
@@ -135,7 +297,8 @@ export default function App() {
       pprContact: strip.pprContact,
       country: strip.country,
       icao: strip.icao,
-      customsCleared: strip.customsCleared
+      customsCleared: strip.customsCleared,
+      frequencies: strip.frequencies
     })
   }
 
@@ -169,7 +332,7 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <div className={isMapFullscreen ? 'app map-is-fullscreen' : 'app'}>
       <header className="app-header">
         <div className="brand">
           LSA <span>Planner</span>
@@ -201,7 +364,34 @@ export default function App() {
         </div>
       </header>
 
-      <section className="panel">
+      <div className="section-nav">
+        <SectionMenu groups={SECTION_GROUPS} openSections={openSections} onToggle={toggleSection} />
+      </div>
+
+      {(liveStatus || timerStatus) && (
+        <div className="bg-status-strip">
+          {liveStatus && (
+            <button
+              type="button"
+              className="bg-status-chip"
+              onClick={() => ensureSectionOpen('live')}
+            >
+              &#128205; {liveStatus}
+            </button>
+          )}
+          {timerStatus && (
+            <button
+              type="button"
+              className="bg-status-chip"
+              onClick={() => ensureSectionOpen('timer')}
+            >
+              &#9201; {timerStatus}
+            </button>
+          )}
+        </div>
+      )}
+
+      <section className="panel" style={{ display: openSections.has('aircraft') ? undefined : 'none' }}>
         <p className="panel-label">Aircraft</p>
         <div className="aircraft-summary">
           <span>
@@ -223,7 +413,7 @@ export default function App() {
         {aircraft.notes && <p className="footnote">{aircraft.notes}</p>}
       </section>
 
-      <section className="panel">
+      <section className="panel" style={{ display: openSections.has('cruise') ? undefined : 'none' }}>
         <p className="panel-label">Cruise settings</p>
         <div className="wind-row">
           <div className="field">
@@ -259,7 +449,7 @@ export default function App() {
         </p>
       </section>
 
-      <section className="panel">
+      <section className="panel" style={{ display: openSections.has('wind') ? undefined : 'none' }}>
         <p className="panel-label">Wind (aloft, true)</p>
         <div className="wind-row">
           <div className="field">
@@ -314,12 +504,16 @@ export default function App() {
         <WeatherFetch waypoints={waypoints} altitudeFt={cruiseAltitudeFt} onFetched={setWind} />
       </section>
 
-      <section className="panel">
+      <section className="panel" style={{ display: openSections.has('glide') ? undefined : 'none' }}>
         <p className="panel-label">Glide range (engine-out)</p>
         <GlideSummary glide={glide} aircraft={aircraft} altitudeFt={cruiseAltitudeFt} />
       </section>
 
-      <section className="panel">
+      <section
+        id="section-route-host"
+        className="panel"
+        style={{ display: openSections.has('route') || isMapFullscreen ? undefined : 'none' }}
+      >
         <p className="panel-label">Route</p>
         <RouteMap
           waypoints={waypoints}
@@ -327,6 +521,11 @@ export default function App() {
           onInsertWaypoint={insertWaypoint}
           onSelectWaypoint={selectWaypoint}
           glide={glide}
+          livePosition={livePosition}
+          visible={openSections.has('route') || isMapFullscreen}
+          pattern={trafficPattern}
+          fullscreen={isMapFullscreen}
+          onToggleFullscreen={() => setIsMapFullscreen((f) => !f)}
         />
         <p className="footnote">
           Drag a waypoint marker to reposition it, or drag one of the small handles along the
@@ -335,8 +534,88 @@ export default function App() {
           waypoint at your planned cruise altitude &mdash; see the Glide range panel below. Use
           the layers icon (top-right of the map) to switch to Kartverket's detailed Norway
           topographic tiles &mdash; free, official, but Norway-only; OpenStreetMap covers Sweden
-          too.
+          too. Small grey diamonds show every curated strip, not just your route. The screen icon
+          (top-left) opens a fullscreen map with flight-timer buttons below it, handy for
+          practicing patterns.
         </p>
+
+        <div className="pattern-controls">
+          <p className="panel-sublabel">Landing pattern overlay</p>
+          <div className="waypoint-fields fp-grid">
+            <div className="field">
+              <label htmlFor="pattern-strip">Airfield</label>
+              <select
+                id="pattern-strip"
+                value={patternStripId}
+                onChange={(e) => setPatternStripId(e.target.value)}
+              >
+                <option value="">None</option>
+                {patternCapableStrips.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {selectedPatternStrip?.runway && (
+              <div className="field">
+                <label htmlFor="pattern-runway">Landing runway</label>
+                <select
+                  id="pattern-runway"
+                  value={patternRunwayEnd}
+                  onChange={(e) => setPatternRunwayEnd(e.target.value as 'A' | 'B')}
+                >
+                  <option value="A">{selectedPatternStrip.runway.split('/')[0]}</option>
+                  <option value="B">{selectedPatternStrip.runway.split('/')[1]}</option>
+                </select>
+              </div>
+            )}
+            <div className="field">
+              <label htmlFor="pattern-side">Traffic pattern</label>
+              <select
+                id="pattern-side"
+                value={patternTrafficSide}
+                onChange={(e) => setPatternTrafficSide(e.target.value as 'left' | 'right')}
+              >
+                <option value="left">Left-hand (assumed default)</option>
+                <option value="right">Right-hand</option>
+              </select>
+            </div>
+          </div>
+          {patternStripId && (
+            <div className="waypoint-fields fp-grid">
+              <div className="field">
+                <label htmlFor="pattern-downwind">Downwind offset (m)</label>
+                <input
+                  id="pattern-downwind"
+                  type="number"
+                  min={100}
+                  step={50}
+                  value={patternDownwindM}
+                  onChange={(e) => setPatternDownwindM(Number(e.target.value) || 1000)}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="pattern-magvar">Magnetic variation (&deg;E, approx.)</label>
+                <input
+                  id="pattern-magvar"
+                  type="number"
+                  step={1}
+                  value={patternMagVarDeg}
+                  onChange={(e) => setPatternMagVarDeg(Number(e.target.value) || 0)}
+                />
+              </div>
+            </div>
+          )}
+          <p className="footnote">
+            The downwind offset and the base-turn point (where the threshold sits 45&deg; behind
+            the wing) are exact geometry for whatever distance you enter. Traffic side (left/right)
+            defaults to left since that's the global convention, but I don't actually know each
+            field's published pattern direction &mdash; verify locally. Magnetic variation is an
+            approximate figure you can adjust, not looked up live. This is a visual training
+            reference, not a substitute for the field's actual published procedures.
+          </p>
+        </div>
         <div className="waypoint-list">
           {waypoints.map((wp, i) => (
             <div className="waypoint-row" key={wp.id}>
@@ -397,7 +676,35 @@ export default function App() {
         </p>
       </section>
 
-      <section className="panel">
+      <section className="panel" style={{ display: openSections.has('live') ? undefined : 'none' }}>
+        <p className="panel-label">Live tracking</p>
+        <LiveTracking
+          waypoints={waypoints}
+          fallbackGroundSpeedKt={
+            navLog.legs.length > 0
+              ? navLog.legs.reduce((s, l) => s + l.groundSpeedKt, 0) / navLog.legs.length
+              : aircraft.cruiseTasKt
+          }
+          speedUnit={speedUnit}
+          tracking={gps.tracking}
+          position={gps.position}
+          error={gps.error}
+          start={gps.start}
+          stop={gps.stop}
+        />
+      </section>
+
+      <section className="panel" style={{ display: openSections.has('weatherreport') ? undefined : 'none' }}>
+        <p className="panel-label">Weather report</p>
+        <WeatherReport waypoints={waypoints} />
+      </section>
+
+      <section className="panel" style={{ display: openSections.has('frequencies') ? undefined : 'none' }}>
+        <p className="panel-label">Radio frequencies</p>
+        <RadioFrequencies waypoints={waypoints} livePosition={livePosition} />
+      </section>
+
+      <section className="panel" style={{ display: openSections.has('fuel') ? undefined : 'none' }}>
         <p className="panel-label">Fuel</p>
         <div className="fuel-config-row">
           {aircraft.extendedFuelCapacityL !== undefined && (
@@ -454,7 +761,7 @@ export default function App() {
         )}
       </section>
 
-      <section className="panel">
+      <section className="panel" style={{ display: openSections.has('weight') ? undefined : 'none' }}>
         <p className="panel-label">Payload &amp; weight</p>
         <div className="field mtow-field">
           <label htmlFor="mtow-select">MTOW category</label>
@@ -514,14 +821,16 @@ export default function App() {
         </p>
       </section>
 
-      <section className="panel">
+      <section className="panel" style={{ display: openSections.has('navlog') ? undefined : 'none' }}>
         <p className="panel-label">Nav log</p>
         <NavLogView navLog={navLog} speedUnit={speedUnit} />
       </section>
 
-      {navLog.legs.length > 0 && (
-        <section className="panel">
-          <p className="panel-label">Totals</p>
+      <section className="panel" style={{ display: openSections.has('totals') ? undefined : 'none' }}>
+        <p className="panel-label">Totals</p>
+        {navLog.legs.length === 0 ? (
+          <p className="empty-hint">Add a route with at least two waypoints to see totals.</p>
+        ) : (
           <div className="totals-grid">
             <div>
               <div className="stat-label">Total distance</div>
@@ -557,15 +866,15 @@ export default function App() {
               </div>
             </div>
           </div>
-        </section>
-      )}
+        )}
+      </section>
 
-      <section className="panel">
+      <section className="panel" style={{ display: openSections.has('daylight') ? undefined : 'none' }}>
         <p className="panel-label">Daylight</p>
         <DaylightInfo waypoints={waypoints} />
       </section>
 
-      <section className="panel">
+      <section className="panel" style={{ display: openSections.has('flightplan') ? undefined : 'none' }}>
         <p className="panel-label">Flight plan (Norway VFR)</p>
         <FlightPlanTool
           waypoints={waypoints}
@@ -575,6 +884,35 @@ export default function App() {
           defaultPob={1 + (passengerKg > 0 ? 1 : 0)}
         />
       </section>
+
+      <section className="panel" style={{ display: openSections.has('timer') ? undefined : 'none' }}>
+        <p className="panel-label">Flight timer (logbook)</p>
+        <FlightTimer
+          sessions={timer.sessions}
+          session={timer.session}
+          leg={timer.leg}
+          actions={timer.actions}
+          summary={timer.summary}
+          startEngine={timer.startEngine}
+          takeoff={timer.takeoff}
+          landing={timer.landing}
+          shutdownEngine={timer.shutdownEngine}
+          reset={timer.reset}
+        />
+      </section>
+
+      {isMapFullscreen && (
+        <TimerActionBar
+          actions={timer.actions}
+          startEngine={timer.startEngine}
+          takeoff={timer.takeoff}
+          landing={timer.landing}
+          shutdownEngine={timer.shutdownEngine}
+          onExitFullscreen={() => setIsMapFullscreen(false)}
+          gpsTracking={gps.tracking}
+          onToggleGps={gps.tracking ? gps.stop : gps.start}
+        />
+      )}
     </div>
   )
 }

@@ -1480,9 +1480,9 @@ button:focus-visible {
 /* When the map goes fullscreen, hide literally everything else in the app
    — header, section nav, status chips, and every other panel — leaving
    only the map itself (plus the fixed timer/GPS bar, which lives outside
-   .app entirely) visible. Targets the Route section by its explicit id
-   rather than :has(), which is simpler to reason about and avoids any
-   dependency on a newer CSS selector working consistently everywhere. */
+   .app entirely) visible. Uses :has() to find whichever section currently
+   contains the fullscreen map, rather than hardcoding "Route" by class,
+   so this keeps working even if panel order changes. */
 
 .app.map-is-fullscreen > .app-header,
 .app.map-is-fullscreen > .section-nav,
@@ -1490,18 +1490,19 @@ button:focus-visible {
   display: none;
 }
 
-.app.map-is-fullscreen > section.panel:not(#section-route-host) {
+.app.map-is-fullscreen > section.panel {
   display: none !important;
 }
 
-.app.map-is-fullscreen > #section-route-host {
+.app.map-is-fullscreen > section.panel:has(> .route-map-fullscreen) {
+  display: block !important;
   padding: 0;
   border: none;
   background: none;
   margin: 0;
 }
 
-.app.map-is-fullscreen > #section-route-host > *:not(.route-map-fullscreen) {
+.app.map-is-fullscreen > section.panel:has(> .route-map-fullscreen) > *:not(.route-map-fullscreen) {
   display: none !important;
 }
 

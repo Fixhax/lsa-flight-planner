@@ -255,7 +255,7 @@ button:focus-visible {
 
 .strip-search-panel {
   position: absolute;
-  z-index: 10;
+  z-index: 2000;
   top: calc(100% + 4px);
   left: 0;
   right: 0;
@@ -960,4 +960,556 @@ button:focus-visible {
 
 .fp-elt-check {
   margin-bottom: 10px;
+}
+
+/* ---------- live GPS marker ---------- */
+
+.map-live-plane {
+  filter: drop-shadow(0 0 5px rgba(255, 46, 166, 0.9)) drop-shadow(0 0 2px rgba(0, 0, 0, 0.6));
+}
+
+/* ---------- flight timer ---------- */
+
+.timer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.timer-btn {
+  width: 100%;
+  border-radius: 10px;
+  padding: 18px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.timer-btn-primary {
+  background: var(--cyan);
+  color: var(--bg);
+}
+
+.timer-btn-primary:hover {
+  opacity: 0.9;
+}
+
+.timer-btn-landing {
+  background: var(--amber);
+}
+
+.timer-btn-secondary {
+  background: var(--panel-raised);
+  border: 1px solid var(--red);
+  color: var(--red);
+}
+
+.timer-status {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.timer-log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.timer-session-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.timer-session-label {
+  color: var(--cyan);
+  font-weight: 600;
+}
+
+.timer-leg-label {
+  color: var(--text-muted);
+  padding-left: 10px;
+}
+
+.timer-summary {
+  margin-bottom: 12px;
+}
+
+.stat-sub {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.timer-reset-btn {
+  width: 100%;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+.timer-reset-btn:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+/* ---------- live tracking panel ---------- */
+
+.live-tracking-status {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.live-tracking-btn {
+  width: 100%;
+  background: var(--panel-raised);
+  border: 1px solid var(--cyan);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--cyan);
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+.live-tracking-btn.active {
+  background: rgba(79, 209, 197, 0.15);
+}
+
+.live-tracking-btn:hover {
+  background: rgba(79, 209, 197, 0.1);
+}
+
+/* ---------- section navigation ---------- */
+
+.section-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.section-nav-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.section-select {
+  flex: 1;
+  background: var(--panel-raised);
+  border: 1px solid var(--cyan);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.bg-status-strip {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.bg-status-chip {
+  background: rgba(79, 209, 197, 0.12);
+  border: 1px solid var(--cyan);
+  border-radius: 20px;
+  padding: 6px 12px;
+  color: var(--cyan);
+  font-size: 0.76rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.bg-status-chip:hover {
+  background: rgba(79, 209, 197, 0.2);
+}
+
+/* ---------- section menu (multi-open checklist) ---------- */
+
+.section-menu {
+  position: relative;
+}
+
+.section-menu-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel-raised);
+  border: 1px solid var(--cyan);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.section-menu-count {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 0.85em;
+}
+
+.section-menu-panel {
+  position: absolute;
+  z-index: 2000;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--panel-raised);
+  border: 1px solid var(--cyan);
+  border-radius: 10px;
+  padding: 10px;
+  max-height: 60vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.section-menu-group {
+  margin-bottom: 10px;
+}
+
+.section-menu-group:last-child {
+  margin-bottom: 0;
+}
+
+.section-menu-group-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 6px;
+}
+
+.section-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  font-size: 0.85rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.section-menu-item input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--cyan);
+}
+
+/* ---------- weather report ---------- */
+
+.weather-report-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.weather-report-card {
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.weather-report-location {
+  font-weight: 600;
+  color: var(--cyan);
+  margin: 0 0 8px;
+}
+
+.weather-report-main {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.weather-report-temp {
+  font-family: var(--font-mono);
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.weather-report-desc {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.weather-report-grid {
+  margin-bottom: 8px;
+}
+
+/* ---------- radio frequencies ---------- */
+
+.panel-sublabel {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 16px 0 8px;
+}
+
+.panel-sublabel:first-of-type {
+  margin-top: 0;
+}
+
+.radio-833-note {
+  background: rgba(79, 209, 197, 0.08);
+  border: 1px solid var(--cyan);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.freq-waypoint-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.freq-waypoint-card {
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.freq-waypoint-name {
+  font-weight: 600;
+  color: var(--cyan);
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+}
+
+.freq-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 0.8rem;
+}
+
+.freq-type {
+  font-weight: 500;
+  min-width: 140px;
+}
+
+.freq-mhz {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--cyan);
+}
+
+.freq-note {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  flex-basis: 100%;
+}
+
+.freq-unconfirmed {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  margin: 0;
+}
+
+.freq-row-reference {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.freq-scope {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 0.75em;
+}
+
+.freq-unverified-tag {
+  background: rgba(229, 72, 77, 0.15);
+  border: 1px solid var(--red);
+  color: var(--red);
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-left: 6px;
+}
+
+.freq-nearby-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 16px 0 8px;
+}
+
+.freq-nearby-sublabel {
+  margin: 0;
+}
+
+.freq-showall-btn {
+  background: var(--panel-raised);
+  border: 1px solid var(--cyan);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.7rem;
+  color: var(--cyan);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.freq-showall-btn:hover {
+  background: rgba(79, 209, 197, 0.1);
+}
+
+/* ---------- airfield markers (always shown) ---------- */
+
+.map-airfield-diamond {
+  width: 8px;
+  height: 8px;
+  background: var(--text-muted);
+  border: 1px solid var(--bg);
+  transform: rotate(45deg);
+  opacity: 0.85;
+}
+
+/* ---------- map fullscreen ---------- */
+
+.map-fullscreen-btn {
+  width: 30px;
+  height: 30px;
+  background: var(--panel-raised);
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.map-fullscreen-btn:hover {
+  background: var(--panel);
+}
+
+.route-map-fullscreen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: calc(100vh - 88px) !important; /* leave room for the timer action bar below */
+  margin: 0 !important;
+  z-index: 5000;
+  border-radius: 0;
+}
+
+/* ---------- fullscreen timer action bar ---------- */
+
+.timer-action-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5001;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.timer-action-bar-buttons {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+}
+
+.timer-action-bar-buttons .timer-btn {
+  flex: 1;
+  padding: 12px 6px;
+  font-size: 0.85rem;
+}
+
+.timer-action-bar-exit {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.timer-action-bar-exit:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+/* ---------- fullscreen map isolation ---------- */
+/* When the map goes fullscreen, hide literally everything else in the app
+   — header, section nav, status chips, and every other panel — leaving
+   only the map itself (plus the fixed timer/GPS bar, which lives outside
+   .app entirely) visible. Targets the Route section by its explicit id
+   rather than :has(), which is simpler to reason about and avoids any
+   dependency on a newer CSS selector working consistently everywhere. */
+
+.app.map-is-fullscreen > .app-header,
+.app.map-is-fullscreen > .section-nav,
+.app.map-is-fullscreen > .bg-status-strip {
+  display: none;
+}
+
+.app.map-is-fullscreen > section.panel:not(#section-route-host) {
+  display: none !important;
+}
+
+.app.map-is-fullscreen > #section-route-host {
+  padding: 0;
+  border: none;
+  background: none;
+  margin: 0;
+}
+
+.app.map-is-fullscreen > #section-route-host > *:not(.route-map-fullscreen) {
+  display: none !important;
+}
+
+.timer-action-bar-gps {
+  width: auto;
+  flex-shrink: 0;
+  margin-bottom: 0;
+  font-size: 0.75rem;
+  padding: 12px 10px;
+  white-space: nowrap;
 }

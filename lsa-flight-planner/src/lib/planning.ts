@@ -13,6 +13,7 @@ export interface Waypoint extends LatLon {
   country?: 'NO' | 'SE' // only known for waypoints picked from the strip dropdown
   icao?: string // ICAO aerodrome code, when known
   customsCleared?: boolean // designated customs aerodrome, when known
+  frequencies?: { type: string; mhz: number; note?: string }[] // confirmed radio frequencies, when known
 }
 
 export interface Leg {

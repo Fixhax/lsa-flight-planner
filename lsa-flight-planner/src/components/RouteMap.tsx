@@ -3,6 +3,9 @@ import L from 'leaflet'
 import type { Waypoint } from '../lib/planning'
 import { destinationPoint } from '../lib/geo'
 import type { GlideResult } from '../lib/glide'
+import type { LivePosition } from '../lib/liveTracking'
+import { airstrips } from '../data/strips'
+import type { TrafficPatternResult } from '../lib/trafficPattern'
 
 interface Props {
   waypoints: Waypoint[]
@@ -10,6 +13,11 @@ interface Props {
   onInsertWaypoint: (afterIndex: number, lat: number, lon: number) => void
   onSelectWaypoint: (id: string) => void
   glide?: GlideResult
+  livePosition?: LivePosition | null
+  visible?: boolean // pass false while the containing panel is display:none
+  pattern?: TrafficPatternResult | null
+  fullscreen?: boolean
+  onToggleFullscreen?: () => void
 }
 
 const waypointIcon = L.divIcon({
@@ -26,6 +34,38 @@ const midpointIcon = L.divIcon({
   iconAnchor: [6, 6]
 })
 
+// Every curated strip, shown always (not just ones in the current route) so
+// nearby fields are visible for reference — a distinct diamond shape and
+// muted color so they never compete visually with the active route/waypoints.
+const airfieldIcon = L.divIcon({
+  className: 'map-airfield-icon',
+  html: '<div class="map-airfield-diamond"></div>',
+  iconSize: [10, 10],
+  iconAnchor: [5, 5]
+})
+
+// A simple top-down airplane silhouette, nose pointing up (0deg = north),
+// rotated to match GPS heading. Uses magenta specifically because it's
+// visually distinct from every other color already used on this map (cyan
+// for waypoints/route, amber for glide circles/warnings) so it never blends
+// into terrain colors on either tile layer.
+const LIVE_MARKER_SVG = `
+  <svg viewBox="0 0 24 24" width="30" height="30">
+    <path d="M12 2 L13.2 8.5 L21.5 13.5 L21.5 15.2 L13.2 12.3 L13.2 17.5 L16.5 19.8 L16.5 21.3 L12 20 L7.5 21.3 L7.5 19.8 L10.8 17.5 L10.8 12.3 L2.5 15.2 L2.5 13.5 L10.8 8.5 Z"
+          fill="#ff2ea6" stroke="#0d1117" stroke-width="0.9" stroke-linejoin="round" />
+  </svg>
+`
+
+function liveIcon(headingDeg?: number) {
+  const rotation = headingDeg ?? 0
+  return L.divIcon({
+    className: 'map-live-icon',
+    html: `<div class="map-live-plane" style="transform: rotate(${rotation}deg)">${LIVE_MARKER_SVG}</div>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15]
+  })
+}
+
 // Default view centered over the Norway/Sweden strip data this app is
 // scoped to, used until there are waypoints to fit bounds to.
 const DEFAULT_CENTER: L.LatLngExpression = [63, 13]
@@ -36,12 +76,22 @@ export default function RouteMap({
   onMoveWaypoint,
   onInsertWaypoint,
   onSelectWaypoint,
-  glide
+  glide,
+  livePosition,
+  visible = true,
+  pattern,
+  fullscreen = false,
+  onToggleFullscreen
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<L.Map | null>(null)
   const layerGroupRef = useRef<L.LayerGroup | null>(null)
+  const airfieldLayerRef = useRef<L.LayerGroup | null>(null)
+  const patternLayerRef = useRef<L.LayerGroup | null>(null)
+  const liveMarkerRef = useRef<L.Marker | null>(null)
   const prevIdsKeyRef = useRef<string>('')
+  const onToggleFullscreenRef = useRef(onToggleFullscreen)
+  onToggleFullscreenRef.current = onToggleFullscreen
 
   // Create the map once.
   useEffect(() => {
@@ -78,13 +128,49 @@ export default function RouteMap({
       )
       .addTo(map)
 
+    // Fullscreen toggle, as a plain Leaflet control button (top-left).
+    const FullscreenControl = L.Control.extend({
+      onAdd: function () {
+        const btn = L.DomUtil.create('button', 'map-fullscreen-btn')
+        btn.type = 'button'
+        btn.innerHTML = '&#9974;'
+        btn.title = 'Toggle fullscreen map'
+        L.DomEvent.disableClickPropagation(btn)
+        btn.onclick = () => onToggleFullscreenRef.current?.()
+        return btn
+      }
+    })
+    if (onToggleFullscreen) {
+      new FullscreenControl({ position: 'topleft' }).addTo(map)
+    }
+
     mapRef.current = map
     layerGroupRef.current = L.layerGroup().addTo(map)
+    airfieldLayerRef.current = L.layerGroup().addTo(map)
+    patternLayerRef.current = L.layerGroup().addTo(map)
+
+    // Every curated strip is shown on the map at all times, not just ones
+    // in the current route — this list never changes at runtime, so it's
+    // populated once here rather than in the per-render redraw effect.
+    airstrips.forEach((strip) => {
+      const marker = L.marker([strip.lat, strip.lon], { icon: airfieldIcon })
+      const meta = [
+        strip.surface,
+        strip.runway ? `rwy ${strip.runway}` : null,
+        strip.lengthM ? `${strip.lengthM}m` : null
+      ]
+        .filter(Boolean)
+        .join(' &middot; ')
+      marker.bindPopup(`<strong>${strip.name}${strip.icao ? ` (${strip.icao})` : ''}</strong><br/>${meta}`)
+      marker.addTo(airfieldLayerRef.current!)
+    })
 
     return () => {
       map.remove()
       mapRef.current = null
       layerGroupRef.current = null
+      airfieldLayerRef.current = null
+      patternLayerRef.current = null
     }
   }, [])
 
@@ -168,5 +254,90 @@ export default function RouteMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [waypoints, glide])
 
-  return <div ref={containerRef} className="route-map" />
+  // Traffic pattern overlay — its own layer so it redraws independently of
+  // waypoint edits/drags.
+  useEffect(() => {
+    const patternLayer = patternLayerRef.current
+    if (!patternLayer) return
+    patternLayer.clearLayers()
+    if (!pattern) return
+
+    // Bright, high-contrast colors distinct from everything else already on
+    // this map (route line is cyan, glide circles are amber, live marker is
+    // magenta) — yellow reads clearly against every tile layer and against
+    // the dark UI chrome alike.
+    const legColors: Record<string, string> = {
+      Runway: '#ffffff',
+      Crosswind: '#ffe066',
+      Downwind: '#ffe066',
+      Base: '#ffe066',
+      Final: '#ff6b35'
+    }
+
+    pattern.legs.forEach((leg) => {
+      const latLngs = leg.points.map((p) => [p.lat, p.lon] as L.LatLngTuple)
+      const color = legColors[leg.name] ?? '#ffe066'
+      // Dark "casing" line underneath, slightly thicker, so the bright line
+      // reads clearly against light and dark map tiles alike.
+      L.polyline(latLngs, {
+        color: '#0d1117',
+        weight: leg.name === 'Runway' ? 8 : 6,
+        opacity: 0.75
+      }).addTo(patternLayer)
+      L.polyline(latLngs, {
+        color,
+        weight: leg.name === 'Runway' ? 5 : 3.5,
+        opacity: 1
+      })
+        .bindTooltip(leg.name, { permanent: false, direction: 'center' })
+        .addTo(patternLayer)
+    })
+  }, [pattern])
+
+  // Live GPS marker lives outside the main layer group and is updated in
+  // place (setLatLng) rather than recreated, so frequent position updates
+  // don't cause the rest of the map (markers, glide circles) to redraw.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    if (!livePosition) {
+      if (liveMarkerRef.current) {
+        liveMarkerRef.current.remove()
+        liveMarkerRef.current = null
+      }
+      return
+    }
+
+    const latLng: L.LatLngTuple = [livePosition.lat, livePosition.lon]
+    if (liveMarkerRef.current) {
+      liveMarkerRef.current.setLatLng(latLng)
+      liveMarkerRef.current.setIcon(liveIcon(livePosition.headingDeg))
+    } else {
+      liveMarkerRef.current = L.marker(latLng, {
+        icon: liveIcon(livePosition.headingDeg),
+        zIndexOffset: 1000
+      }).addTo(map)
+    }
+  }, [livePosition])
+
+  // Leaflet measures its container at creation/update time. If that
+  // container was display:none (e.g. its section wasn't the open one),
+  // Leaflet thinks it has 0x0 size and never recovers on its own — this
+  // fixes it the moment the panel actually becomes visible. Also needed
+  // when toggling fullscreen, since that resizes the container too.
+  useEffect(() => {
+    if (!visible || !mapRef.current) return
+    const id = requestAnimationFrame(() => {
+      mapRef.current?.invalidateSize()
+    })
+    return () => cancelAnimationFrame(id)
+  }, [visible, fullscreen])
+
+  return (
+    <div
+      ref={containerRef}
+      className={fullscreen ? 'route-map route-map-fullscreen' : 'route-map'}
+    />
+  )
 }

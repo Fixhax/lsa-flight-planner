@@ -12,6 +12,7 @@ export interface AirstripEntry {
   runway?: string // e.g. '16/34' — omitted where not confirmed
   pprContact?: { name: string; phone: string } // shown as a persistent footnote once selected
   customsCleared?: boolean // designated customs aerodrome — relevant for NO/SE border crossings
+  frequencies?: { type: string; mhz: number; note?: string }[] // only confirmed, published frequencies — omitted where not verified
   note?: string
 }
 
@@ -92,6 +93,9 @@ export const airstrips: AirstripEntry[] = [
     lon: 17.4294,
     elevationFt: 105,
     runway: '17/35',
+    frequencies: [
+      { type: 'Common/traffic', mhz: 123.65, note: 'Shared by several Swedish flying clubs and gliding sites in this area, not exclusive to Gryttjom \u2014 expect other traffic on it' }
+    ],
     note: 'Active skydiving — check for jump ops; runway length not confirmed'
   },
   {
