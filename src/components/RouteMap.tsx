@@ -18,6 +18,7 @@ interface Props {
   pattern?: TrafficPatternResult | null
   fullscreen?: boolean
   onToggleFullscreen?: () => void
+  historyTrack?: { lat: number; lon: number }[] | null
 }
 
 const waypointIcon = L.divIcon({
@@ -81,13 +82,15 @@ export default function RouteMap({
   visible = true,
   pattern,
   fullscreen = false,
-  onToggleFullscreen
+  onToggleFullscreen,
+  historyTrack
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<L.Map | null>(null)
   const layerGroupRef = useRef<L.LayerGroup | null>(null)
   const airfieldLayerRef = useRef<L.LayerGroup | null>(null)
   const patternLayerRef = useRef<L.LayerGroup | null>(null)
+  const historyLayerRef = useRef<L.LayerGroup | null>(null)
   const liveMarkerRef = useRef<L.Marker | null>(null)
   const prevIdsKeyRef = useRef<string>('')
   const onToggleFullscreenRef = useRef(onToggleFullscreen)
@@ -148,6 +151,7 @@ export default function RouteMap({
     layerGroupRef.current = L.layerGroup().addTo(map)
     airfieldLayerRef.current = L.layerGroup().addTo(map)
     patternLayerRef.current = L.layerGroup().addTo(map)
+    historyLayerRef.current = L.layerGroup().addTo(map)
 
     // Every curated strip is shown on the map at all times, not just ones
     // in the current route — this list never changes at runtime, so it's
@@ -171,6 +175,7 @@ export default function RouteMap({
       layerGroupRef.current = null
       airfieldLayerRef.current = null
       patternLayerRef.current = null
+      historyLayerRef.current = null
     }
   }, [])
 
@@ -293,6 +298,27 @@ export default function RouteMap({
         .addTo(patternLayer)
     })
   }, [pattern])
+
+  // A saved past flight's GPS breadcrumb trail, shown as a distinct dashed
+  // line so it never gets confused with the planned route above. Selecting
+  // one also re-fits the view so the whole flown track is visible.
+  useEffect(() => {
+    const map = mapRef.current
+    const historyLayer = historyLayerRef.current
+    if (!map || !historyLayer) return
+    historyLayer.clearLayers()
+    if (!historyTrack || historyTrack.length < 2) return
+
+    const latLngs = historyTrack.map((p) => [p.lat, p.lon] as L.LatLngTuple)
+    L.polyline(latLngs, {
+      color: '#a78bfa',
+      weight: 3,
+      opacity: 0.85,
+      dashArray: '2 6'
+    }).addTo(historyLayer)
+
+    map.fitBounds(L.latLngBounds(latLngs), { padding: [32, 32] })
+  }, [historyTrack])
 
   // Live GPS marker lives outside the main layer group and is updated in
   // place (setLatLng) rather than recreated, so frequent position updates

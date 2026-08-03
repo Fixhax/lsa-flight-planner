@@ -1514,3 +1514,49 @@ button:focus-visible {
   padding: 12px 10px;
   white-space: nowrap;
 }
+
+/* ---------- flight history ---------- */
+
+.flight-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.flight-history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.flight-history-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.85rem;
+}
+
+.flight-history-meta span {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.flight-history-toggle {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.flight-history-toggle.active {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}

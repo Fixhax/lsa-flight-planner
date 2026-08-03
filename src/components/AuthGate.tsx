@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase, authConfigured } from '../lib/supabaseClient'
+import { AuthContext } from '../lib/authContext'
 
 export default function AuthGate({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
@@ -27,7 +28,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   // No Supabase project configured yet — run without a login gate. See
   // README for how to turn this on.
-  if (!authConfigured) return <>{children}</>
+  if (!authConfigured) return <AuthContext.Provider value={null}>{children}</AuthContext.Provider>
 
   if (loading) {
     return (
@@ -90,7 +91,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }
 
   return (
-    <>
+    <AuthContext.Provider value={session}>
       <div className="auth-bar">
         <span>{session.user.email}</span>
         <button type="button" onClick={() => supabase?.auth.signOut()}>
@@ -98,6 +99,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         </button>
       </div>
       {children}
-    </>
+    </AuthContext.Provider>
   )
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { aircraftRegistry, getAircraftById } from './aircraft/registry'
 import { formatMinutes, planRoute, MIN_RESERVE_MINUTES, type Waypoint } from './lib/planning'
 import type { Wind } from './lib/wind'
@@ -26,6 +26,10 @@ import WeatherReport from './components/WeatherReport'
 import RadioFrequencies from './components/RadioFrequencies'
 import { computeTrafficPattern, parseRunwayEnds } from './lib/trafficPattern'
 import { loadPersistedPlan, savePersistedPlan } from './lib/persistence'
+import { useAuth } from './lib/authContext'
+import { loadCloudPlan, saveCloudPlan, saveFlightTrack, type SavedFlightTrack } from './lib/cloudSync'
+import { distanceNm } from './lib/geo'
+import FlightHistory from './components/FlightHistory'
 
 let nextId = 1
 function makeWaypoint(strip?: AirstripEntry): Waypoint {
@@ -70,6 +74,7 @@ const SECTION_GROUPS: { label: string; sections: { id: string; label: string }[]
       { id: 'route', label: 'Route & map' },
       { id: 'glide', label: 'Glide range' },
       { id: 'live', label: 'Live tracking' },
+      { id: 'history', label: 'Flight history' },
       { id: 'weatherreport', label: 'Weather report' },
       { id: 'frequencies', label: 'Radio frequencies' }
     ]
@@ -93,6 +98,8 @@ const SECTION_GROUPS: { label: string; sections: { id: string; label: string }[]
 
 export default function App() {
   const persisted = loadPersistedPlan()
+  const session = useAuth()
+  const userId = session?.user.id ?? null
 
   const [aircraftId, setAircraftId] = useState(persisted?.aircraftId ?? aircraftRegistry[0].id)
   const [waypoints, setWaypoints] = useState<Waypoint[]>(
@@ -121,10 +128,45 @@ export default function App() {
   const [luggageKg, setLuggageKg] = useState(persisted?.luggageKg ?? 0)
   const [mtowKg, setMtowKg] = useState(persisted?.mtowKg ?? aircraftRegistry[0].maxTakeoffWeightKg)
 
+  // Cloud-hydrate on sign-in — replaces the (possibly stale, per-browser)
+  // localStorage snapshot with the authoritative saved plan for this
+  // account once it arrives. A no-op when signed out or unconfigured.
+  useEffect(() => {
+    if (!userId) return
+    let cancelled = false
+    loadCloudPlan(userId).then((cloud) => {
+      if (cancelled || !cloud) return
+      if (cloud.aircraftId !== undefined) setAircraftId(cloud.aircraftId)
+      if ((cloud.waypoints as Waypoint[] | undefined)?.length) {
+        setWaypoints(cloud.waypoints as Waypoint[])
+      }
+      if (cloud.wind) setWind(cloud.wind)
+      if (cloud.cruiseSpeedKt !== undefined) setCruiseSpeedKt(cloud.cruiseSpeedKt)
+      if (cloud.cruiseAltitudeFt !== undefined) setCruiseAltitudeFt(cloud.cruiseAltitudeFt)
+      if (cloud.speedUnit) setSpeedUnit(cloud.speedUnit as SpeedUnit)
+      if (cloud.windSpeedUnit) setWindSpeedUnit(cloud.windSpeedUnit as SpeedUnit)
+      if (cloud.extendedTanks !== undefined) setExtendedTanks(cloud.extendedTanks)
+      if (cloud.fuelOnBoardL !== undefined) setFuelOnBoardL(cloud.fuelOnBoardL)
+      if (cloud.reserveMinutes !== undefined) setReserveMinutes(cloud.reserveMinutes)
+      if (cloud.pilotKg !== undefined) setPilotKg(cloud.pilotKg)
+      if (cloud.passengerKg !== undefined) setPassengerKg(cloud.passengerKg)
+      if (cloud.luggageKg !== undefined) setLuggageKg(cloud.luggageKg)
+      if (cloud.mtowKg !== undefined) setMtowKg(cloud.mtowKg)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
+
+  const cloudSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // Keep the plan safe across refreshes — deliberately excludes transient
   // things like GPS position, timer sessions, and which panels are open.
+  // Always saved locally (instant, works offline); also pushed to the
+  // account's cloud row (debounced, so typing doesn't hammer the database)
+  // when signed in.
   useEffect(() => {
-    savePersistedPlan({
+    const plan = {
       aircraftId,
       waypoints,
       wind,
@@ -139,8 +181,17 @@ export default function App() {
       passengerKg,
       luggageKg,
       mtowKg
-    })
+    }
+    savePersistedPlan(plan)
+
+    if (userId) {
+      if (cloudSaveTimerRef.current) clearTimeout(cloudSaveTimerRef.current)
+      cloudSaveTimerRef.current = setTimeout(() => {
+        saveCloudPlan(userId, plan)
+      }, 800)
+    }
   }, [
+    userId,
     aircraftId,
     waypoints,
     wind,
@@ -176,6 +227,42 @@ export default function App() {
 
   const timer = useFlightTimer(setTimerStatus)
   const gps = useGpsTracking(setLivePosition, setLiveStatus)
+
+  // Records a GPS breadcrumb trail for the current leg — only while
+  // actually airborne (between the takeoff and landing button presses), so
+  // taxiing and ramp time before/after don't pollute the saved track.
+  const [flightTrackPoints, setFlightTrackPoints] = useState<LivePosition[]>([])
+  const [selectedHistoryTrack, setSelectedHistoryTrack] = useState<SavedFlightTrack | null>(null)
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
+  const airborne = !!(timer.leg && !timer.leg.landingAt)
+
+  useEffect(() => {
+    if (!airborne || !livePosition) return
+    setFlightTrackPoints((prev) => [...prev, livePosition])
+  }, [livePosition, airborne])
+
+  // Wraps the plain timer.landing() so logging a landing also closes out
+  // and saves whatever track was recorded during that leg, then clears it
+  // for the next one. Falls back to just resetting when there's nothing
+  // worth saving (not enough points, or not signed in to have anywhere to
+  // save it).
+  function handleLanding() {
+    if (userId && timer.leg && flightTrackPoints.length >= 2) {
+      let distance = 0
+      for (let i = 1; i < flightTrackPoints.length; i++) {
+        distance += distanceNm(flightTrackPoints[i - 1], flightTrackPoints[i])
+      }
+      saveFlightTrack(userId, {
+        aircraftId,
+        startedAt: timer.leg.takeoffAt,
+        endedAt: Date.now(),
+        distanceNm: distance,
+        points: flightTrackPoints.map((p) => ({ lat: p.lat, lon: p.lon, timestamp: p.timestamp }))
+      }).then(() => setHistoryRefreshKey((k) => k + 1))
+    }
+    setFlightTrackPoints([])
+    timer.landing()
+  }
 
   // Landing pattern controls — start with nothing selected. Strips with a
   // known runway are candidates; the rest genuinely can't support this yet.
@@ -526,6 +613,7 @@ export default function App() {
           pattern={trafficPattern}
           fullscreen={isMapFullscreen}
           onToggleFullscreen={() => setIsMapFullscreen((f) => !f)}
+          historyTrack={selectedHistoryTrack?.points ?? null}
         />
         <p className="footnote">
           Drag a waypoint marker to reposition it, or drag one of the small handles along the
@@ -692,6 +780,20 @@ export default function App() {
           start={gps.start}
           stop={gps.stop}
         />
+      </section>
+
+      <section className="panel" style={{ display: openSections.has('history') ? undefined : 'none' }}>
+        <p className="panel-label">Flight history</p>
+        <FlightHistory
+          userId={userId}
+          refreshKey={historyRefreshKey}
+          selectedTrackId={selectedHistoryTrack?.id ?? null}
+          onSelect={setSelectedHistoryTrack}
+        />
+        <p className="footnote">
+          Selecting a past flight draws its GPS track (dashed purple) on the Route &amp; map panel
+          above and zooms to fit it.
+        </p>
       </section>
 
       <section className="panel" style={{ display: openSections.has('weatherreport') ? undefined : 'none' }}>
@@ -895,7 +997,7 @@ export default function App() {
           summary={timer.summary}
           startEngine={timer.startEngine}
           takeoff={timer.takeoff}
-          landing={timer.landing}
+          landing={handleLanding}
           shutdownEngine={timer.shutdownEngine}
           reset={timer.reset}
         />
@@ -906,7 +1008,7 @@ export default function App() {
           actions={timer.actions}
           startEngine={timer.startEngine}
           takeoff={timer.takeoff}
-          landing={timer.landing}
+          landing={handleLanding}
           shutdownEngine={timer.shutdownEngine}
           onExitFullscreen={() => setIsMapFullscreen(false)}
           gpsTracking={gps.tracking}
