@@ -207,17 +207,6 @@ export default function FlightPlanTool({
           </button>
         </>
       )}
-
-      <p className="footnote">
-        Laid out by standard ICAO flight-plan item numbers (per SKYbrary's Flight Plan
-        Completion guidance) &mdash; this prepares the information, it doesn't submit anything
-        anywhere. File it yourself via{' '}
-        <a href="https://www.ippc.no" target="_blank" rel="noreferrer">
-          ippc.no
-        </a>{' '}
-        (Avinor's official briefing portal) or by radio/phone to AFIS. EOBT is UTC, not local
-        &mdash; ICAO flight plans are always filed in UTC.
-      </p>
     </div>
   )
 }

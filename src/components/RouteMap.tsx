@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import type { Waypoint } from '../lib/planning'
 import { destinationPoint } from '../lib/geo'
@@ -72,6 +72,10 @@ function liveIcon(headingDeg?: number) {
 const DEFAULT_CENTER: L.LatLngExpression = [63, 13]
 const DEFAULT_ZOOM = 5
 
+// Zoom level to snap to when "Follow" is first turned on — roughly a 5km
+// view width at typical screen sizes and latitudes.
+const FOLLOW_ZOOM = 13
+
 export default function RouteMap({
   waypoints,
   onMoveWaypoint,
@@ -85,6 +89,7 @@ export default function RouteMap({
   onToggleFullscreen,
   historyTrack
 }: Props) {
+  const wrapRef = useRef<HTMLDivElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<L.Map | null>(null)
   const layerGroupRef = useRef<L.LayerGroup | null>(null)
@@ -95,6 +100,15 @@ export default function RouteMap({
   const prevIdsKeyRef = useRef<string>('')
   const onToggleFullscreenRef = useRef(onToggleFullscreen)
   onToggleFullscreenRef.current = onToggleFullscreen
+  const followBtnRef = useRef<HTMLButtonElement | null>(null)
+  const trackUpBtnRef = useRef<HTMLButtonElement | null>(null)
+  const wasFollowingRef = useRef(false)
+
+  // "Follow me" (re-center on GPS position) and "track-up" (rotate the map
+  // to align with the direction of travel) are view-only preferences, kept
+  // local to the map rather than lifted to App state.
+  const [follow, setFollow] = useState(false)
+  const [trackUp, setTrackUp] = useState(false)
 
   // Create the map once.
   useEffect(() => {
@@ -146,6 +160,41 @@ export default function RouteMap({
     if (onToggleFullscreen) {
       new FullscreenControl({ position: 'topleft' }).addTo(map)
     }
+
+    // "Follow me" — re-centers on the live GPS position as it updates.
+    const FollowControl = L.Control.extend({
+      onAdd: function () {
+        const btn = L.DomUtil.create('button', 'map-follow-btn')
+        btn.type = 'button'
+        btn.innerHTML = '&#9678;'
+        btn.title = 'Follow my position'
+        L.DomEvent.disableClickPropagation(btn)
+        btn.onclick = () => setFollow((f) => !f)
+        followBtnRef.current = btn
+        return btn
+      }
+    })
+    new FollowControl({ position: 'topleft' }).addTo(map)
+
+    // Track-up — rotates the map so the direction of travel points up.
+    const TrackUpControl = L.Control.extend({
+      onAdd: function () {
+        const btn = L.DomUtil.create('button', 'map-trackup-btn')
+        btn.type = 'button'
+        btn.innerHTML = '&#8593;'
+        btn.title = 'Rotate map to track-up'
+        L.DomEvent.disableClickPropagation(btn)
+        btn.onclick = () => setTrackUp((t) => !t)
+        trackUpBtnRef.current = btn
+        return btn
+      }
+    })
+    new TrackUpControl({ position: 'topleft' }).addTo(map)
+
+    // Manually panning the map means the pilot wants to look elsewhere —
+    // drop out of follow mode rather than keep fighting their drag on the
+    // next GPS update, matching how phone nav apps behave.
+    map.on('dragstart', () => setFollow(false))
 
     mapRef.current = map
     layerGroupRef.current = L.layerGroup().addTo(map)
@@ -250,10 +299,13 @@ export default function RouteMap({
     if (idsKey !== prevIdsKeyRef.current) {
       prevIdsKeyRef.current = idsKey
       if (valid.length === 1) {
-        map.setView([valid[0].lat, valid[0].lon], 9)
+        map.setView([valid[0].lat, valid[0].lon], FOLLOW_ZOOM)
       } else if (valid.length >= 2) {
         const bounds = L.latLngBounds(valid.map((wp) => [wp.lat, wp.lon] as L.LatLngTuple))
-        map.fitBounds(bounds, { padding: [32, 32] })
+        // Caps how far it zooms in for close-together waypoints — without
+        // this, two waypoints a couple km apart fit so tight the map is
+        // barely usable.
+        map.fitBounds(bounds, { padding: [32, 32], maxZoom: FOLLOW_ZOOM })
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -347,6 +399,47 @@ export default function RouteMap({
     }
   }, [livePosition])
 
+  // Re-centers on the live position while follow is on: snaps to the
+  // follow zoom level the moment it's turned on, then just pans (keeping
+  // whatever zoom the pilot has since chosen) on every update after that.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!follow || !map || !livePosition) {
+      wasFollowingRef.current = false
+      return
+    }
+    const latLng: L.LatLngTuple = [livePosition.lat, livePosition.lon]
+    if (!wasFollowingRef.current) {
+      map.setView(latLng, FOLLOW_ZOOM, { animate: true })
+      wasFollowingRef.current = true
+    } else {
+      map.panTo(latLng, { animate: true })
+    }
+  }, [livePosition, follow])
+
+  useEffect(() => {
+    followBtnRef.current?.classList.toggle('active', follow)
+  }, [follow])
+
+  useEffect(() => {
+    trackUpBtnRef.current?.classList.toggle('active', trackUp)
+  }, [trackUp])
+
+  // Rotates the whole map so the current track points up, by CSS-rotating
+  // the container itself — tiles and markers (including the live plane
+  // icon) all turn together. This is a lightweight approach rather than a
+  // rotation-aware tile renderer, so: dragging/clicking position while
+  // rotated will feel offset (best used together with Follow, not while
+  // editing the route), and tiles right at the rotated corners can
+  // occasionally take a moment to catch up. Fine for reference use in the
+  // air, which is what this is for.
+  useEffect(() => {
+    const heading = trackUp ? livePosition?.headingDeg : undefined
+    if (containerRef.current) {
+      containerRef.current.style.transform = heading ? `rotate(${-heading}deg)` : ''
+    }
+  }, [trackUp, livePosition?.headingDeg])
+
   // Leaflet measures its container at creation/update time. If that
   // container was display:none (e.g. its section wasn't the open one),
   // Leaflet thinks it has 0x0 size and never recovers on its own — this
@@ -362,14 +455,37 @@ export default function RouteMap({
 
   // Toggle the fullscreen class directly via classList instead of through
   // React's className prop. Leaflet adds its own classes (leaflet-container,
-  // leaflet-touch, etc.) straight to this DOM node outside of React's
-  // knowledge — if className were re-rendered as a template string here,
-  // React would overwrite the whole attribute and wipe those out, which
-  // broke Leaflet's own layout containment (overflow: hidden) and left the
-  // map spilling over the rest of the page after leaving fullscreen.
+  // leaflet-touch, etc.) straight to the inner container DOM node outside
+  // of React's knowledge — if className were re-rendered as a template
+  // string on that node, React would overwrite the whole attribute and
+  // wipe those out, which broke Leaflet's own layout containment
+  // (overflow: hidden) and left the map spilling over the rest of the page
+  // after leaving fullscreen. The fixed positioning lives on this outer
+  // wrapper instead, which React never touches, so that risk doesn't apply
+  // here — but keeping it off the className prop for consistency.
   useEffect(() => {
-    containerRef.current?.classList.toggle('route-map-fullscreen', fullscreen)
+    wrapRef.current?.classList.toggle('route-map-wrap-fullscreen', fullscreen)
   }, [fullscreen])
 
-  return <div ref={containerRef} className="route-map" />
+  return (
+    <div ref={wrapRef} className="route-map-wrap">
+      <div ref={containerRef} className="route-map" />
+      {livePosition && (
+        <div className="map-hud">
+          {livePosition.speedKt !== undefined && (
+            <div className="map-hud-item">
+              <span className="map-hud-label">GS</span>
+              {Math.round(livePosition.speedKt)} kt
+            </div>
+          )}
+          {livePosition.headingDeg !== undefined && (
+            <div className="map-hud-item">
+              <span className="map-hud-label">TRK</span>
+              {Math.round(livePosition.headingDeg)}&deg;
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }

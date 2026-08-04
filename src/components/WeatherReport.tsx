@@ -80,12 +80,6 @@ export default function WeatherReport({ waypoints }: { waypoints: Waypoint[] }) 
           ))}
         </div>
       )}
-
-      <p className="footnote">
-        General forecast (Open-Meteo) for your departure and destination &mdash; a convenience
-        overview, not an aviation briefing. No METAR/TAF/SIGMET/NOTAM data. Always get a proper
-        pre-flight weather briefing before you fly. Requires an internet connection.
-      </p>
     </div>
   )
 }

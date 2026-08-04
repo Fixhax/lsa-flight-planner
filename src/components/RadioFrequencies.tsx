@@ -95,13 +95,6 @@ export default function RadioFrequencies({
           </div>
         ))}
       </div>
-      <p className="footnote">
-        This regional list was provided and confirmed by a user citing official Avinor AIP charts.
-        I independently spot-checked the Bergen (ENBR) entries against the exact chart cited and
-        they matched precisely &mdash; the rest wasn't individually re-verified by me beyond that.
-        AIRAC cycles change frequencies periodically, so cross-check before relying on this
-        operationally.
-      </p>
 
       <p className="panel-sublabel">General reference (not airfield-specific)</p>
       <div className="freq-waypoint-list">
@@ -118,12 +111,6 @@ export default function RadioFrequencies({
           </div>
         ))}
       </div>
-
-      <p className="footnote">
-        Only frequencies I could confirm or that were explicitly given to me are shown here
-        &mdash; nothing here is guessed. This is not a substitute for the current AIP, and
-        frequencies can change.
-      </p>
     </div>
   )
 }

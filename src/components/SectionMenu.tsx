@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export interface SectionGroup {
   label: string
@@ -13,11 +13,23 @@ interface Props {
 
 export default function SectionMenu({ groups, openSections, onToggle }: Props) {
   const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handlePointerDown(e: PointerEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [open])
 
   const openCount = openSections.size
 
   return (
-    <div className="section-menu">
+    <div className="section-menu" ref={containerRef}>
       <button type="button" className="section-menu-trigger" onClick={() => setOpen((o) => !o)}>
         <span>
           Sections{' '}

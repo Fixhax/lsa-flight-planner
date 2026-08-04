@@ -66,9 +66,7 @@ export default function DaylightInfo({ waypoints }: { waypoints: Waypoint[] }) {
           </div>
           <p className="footnote">
             Local time ({outcome.result.timezone}), fetched live for today (
-            {outcome.result.date}). Civil twilight ends when the sun reaches 6&deg; below the
-            horizon &mdash; check your national VFR night-flying rule for which of these two
-            instants actually applies as your limit.
+            {outcome.result.date}).
           </p>
         </>
       )}

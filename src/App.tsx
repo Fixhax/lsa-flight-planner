@@ -30,6 +30,7 @@ import { useAuth } from './lib/authContext'
 import { loadCloudPlan, saveCloudPlan, saveFlightTrack, type SavedFlightTrack } from './lib/cloudSync'
 import { distanceNm } from './lib/geo'
 import FlightHistory from './components/FlightHistory'
+import Help from './components/Help'
 
 let nextId = 1
 function makeWaypoint(strip?: AirstripEntry): Waypoint {
@@ -93,6 +94,10 @@ const SECTION_GROUPS: { label: string; sections: { id: string; label: string }[]
       { id: 'flightplan', label: 'Flight plan' },
       { id: 'timer', label: 'Flight timer (logbook)' }
     ]
+  },
+  {
+    label: 'Reference',
+    sections: [{ id: 'help', label: 'Help & disclaimers' }]
   }
 ]
 
@@ -530,11 +535,6 @@ export default function App() {
             />
           </div>
         </div>
-        <p className="footnote">
-          Defaults to {aircraft.displayName}'s published cruise speed &mdash; lower it for a
-          fuel-saving cruise or a short-field configuration. Altitude is recorded for your nav
-          log but doesn't yet adjust true airspeed or fuel burn for density altitude.
-        </p>
       </section>
 
       <section className="panel" style={{ display: openSections.has('wind') ? undefined : 'none' }}>
@@ -585,16 +585,12 @@ export default function App() {
             />
           </div>
         </div>
-        <p className="footnote">
-          Wind speed has its own unit, separate from the header setting above &mdash; handy
-          since METAR/TAF wind is often reported in different units than you fly.
-        </p>
         <WeatherFetch waypoints={waypoints} altitudeFt={cruiseAltitudeFt} onFetched={setWind} />
       </section>
 
       <section className="panel" style={{ display: openSections.has('glide') ? undefined : 'none' }}>
         <p className="panel-label">Glide range (engine-out)</p>
-        <GlideSummary glide={glide} aircraft={aircraft} altitudeFt={cruiseAltitudeFt} />
+        <GlideSummary glide={glide} altitudeFt={cruiseAltitudeFt} />
       </section>
 
       <section
@@ -615,18 +611,6 @@ export default function App() {
           onToggleFullscreen={() => setIsMapFullscreen((f) => !f)}
           historyTrack={selectedHistoryTrack?.points ?? null}
         />
-        <p className="footnote">
-          Drag a waypoint marker to reposition it, or drag one of the small handles along the
-          route line to insert a new waypoint there &mdash; the nav log and fuel numbers below
-          update automatically. The dashed amber circles show engine-out glide range from each
-          waypoint at your planned cruise altitude &mdash; see the Glide range panel below. Use
-          the layers icon (top-right of the map) to switch to Kartverket's detailed Norway
-          topographic tiles &mdash; free, official, but Norway-only; OpenStreetMap covers Sweden
-          too. Small grey diamonds show every curated strip, not just your route. The screen icon
-          (top-left) opens a fullscreen map with flight-timer buttons below it, handy for
-          practicing patterns.
-        </p>
-
         <div className="pattern-controls">
           <p className="panel-sublabel">Landing pattern overlay</p>
           <div className="waypoint-fields fp-grid">
@@ -695,14 +679,6 @@ export default function App() {
               </div>
             </div>
           )}
-          <p className="footnote">
-            The downwind offset and the base-turn point (where the threshold sits 45&deg; behind
-            the wing) are exact geometry for whatever distance you enter. Traffic side (left/right)
-            defaults to left since that's the global convention, but I don't actually know each
-            field's published pattern direction &mdash; verify locally. Magnetic variation is an
-            approximate figure you can adjust, not looked up live. This is a visual training
-            reference, not a substitute for the field's actual published procedures.
-          </p>
         </div>
         <div className="waypoint-list">
           {waypoints.map((wp, i) => (
@@ -755,13 +731,6 @@ export default function App() {
         <button className="add-waypoint" onClick={addWaypoint}>
           + Add waypoint
         </button>
-        <p className="footnote">
-          Open the dropdown to browse a starter list of confirmed grass/gravel strips in Norway
-          and Sweden (see <code>src/data/strips.ts</code>), with surface, runway, length, and
-          elevation shown for each &mdash; selecting one fills the fields below, which you can
-          still edit by hand. For anywhere else, type coordinates directly in decimal degrees
-          (e.g. 44.8848, -93.2223); south and west are negative.
-        </p>
       </section>
 
       <section className="panel" style={{ display: openSections.has('live') ? undefined : 'none' }}>
@@ -790,10 +759,6 @@ export default function App() {
           selectedTrackId={selectedHistoryTrack?.id ?? null}
           onSelect={setSelectedHistoryTrack}
         />
-        <p className="footnote">
-          Selecting a past flight draws its GPS track (dashed purple) on the Route &amp; map panel
-          above and zooms to fit it.
-        </p>
       </section>
 
       <section className="panel" style={{ display: openSections.has('weatherreport') ? undefined : 'none' }}>
@@ -855,12 +820,6 @@ export default function App() {
           </div>
         </div>
         <FuelGauge navLog={navLog} />
-        {aircraft.extendedFuelCapacityL !== undefined && (
-          <p className="footnote">
-            Extended-tank capacity is an estimate, not a confirmed factory spec &mdash; verify
-            against your aircraft's documentation before relying on it.
-          </p>
-        )}
       </section>
 
       <section className="panel" style={{ display: openSections.has('weight') ? undefined : 'none' }}>
@@ -917,10 +876,6 @@ export default function App() {
         <div className="weight-summary-wrap">
           <WeightSummary weight={weight} />
         </div>
-        <p className="footnote">
-          Fuel weight uses an approximate avgas density of 0.72 kg/L. This is a takeoff-weight
-          check only &mdash; it doesn't verify CG position within limits.
-        </p>
       </section>
 
       <section className="panel" style={{ display: openSections.has('navlog') ? undefined : 'none' }}>
@@ -1001,6 +956,11 @@ export default function App() {
           shutdownEngine={timer.shutdownEngine}
           reset={timer.reset}
         />
+      </section>
+
+      <section className="panel" style={{ display: openSections.has('help') ? undefined : 'none' }}>
+        <p className="panel-label">Help &amp; disclaimers</p>
+        <Help />
       </section>
 
       {isMapFullscreen && (

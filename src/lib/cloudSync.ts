@@ -54,6 +54,11 @@ export async function saveFlightTrack(userId: string, track: NewFlightTrack): Pr
   })
 }
 
+export async function deleteFlightTrack(userId: string, trackId: string): Promise<void> {
+  if (!supabase) return
+  await supabase.from('flight_tracks').delete().eq('id', trackId).eq('user_id', userId)
+}
+
 export async function loadFlightTracks(userId: string): Promise<SavedFlightTrack[]> {
   if (!supabase) return []
   const { data, error } = await supabase

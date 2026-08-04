@@ -101,14 +101,6 @@ export default function FlightTimer({
           </button>
         </>
       )}
-
-      <p className="footnote">
-        Airframe time is summed takeoff-to-landing across all legs; engine time is summed
-        start-up-to-shutdown &mdash; these differ whenever the engine keeps running through a
-        stop (common in bush flying) or idles before/after the flight portion. Times use this
-        device's clock. Nothing here is saved if you close the app. This also runs in the
-        fullscreen map view (Route panel) so you can time patterns while watching the map.
-      </p>
     </div>
   )
 }

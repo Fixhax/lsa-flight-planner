@@ -87,14 +87,6 @@ export default function LiveTracking({
           )}
         </>
       )}
-
-      <p className="footnote">
-        Uses this device's GPS &mdash; needs your permission, a page served over https (or
-        localhost), and doesn't work from a plain local file on most browsers, especially iOS
-        Safari. ETA uses live GPS ground speed when available, otherwise your planned cruise
-        ground speed. The current-position marker shows on the map above as a cyan arrow. This
-        also works from the fullscreen map view.
-      </p>
     </div>
   )
 }

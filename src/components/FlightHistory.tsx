@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { loadFlightTracks, type SavedFlightTrack } from '../lib/cloudSync'
+import { loadFlightTracks, deleteFlightTrack, type SavedFlightTrack } from '../lib/cloudSync'
 import { formatClock } from '../lib/flightTimer'
 
 interface Props {
@@ -24,6 +24,23 @@ export default function FlightHistory({ userId, refreshKey, selectedTrackId, onS
       setLoading(false)
     })
   }, [userId, refreshKey])
+
+  function handleDelete(track: SavedFlightTrack) {
+    if (!userId) return
+    if (!confirm('Delete this saved flight? This can’t be undone.')) return
+    setTracks((prev) => prev.filter((t) => t.id !== track.id))
+    if (selectedTrackId === track.id) onSelect(null)
+    deleteFlightTrack(userId, track.id)
+  }
+
+  function handleClearAll() {
+    if (!userId) return
+    if (!confirm(`Delete all ${tracks.length} saved flights? This can’t be undone.`)) return
+    const toDelete = tracks
+    setTracks([])
+    onSelect(null)
+    toDelete.forEach((t) => deleteFlightTrack(userId, t.id))
+  }
 
   if (!userId) {
     return <p className="empty-hint">Sign in to save and browse past flight tracks.</p>
@@ -57,16 +74,29 @@ export default function FlightHistory({ userId, refreshKey, selectedTrackId, onS
                 {durationMin} min{t.distanceNm ? ` · ${t.distanceNm.toFixed(1)} nm` : ''}
               </span>
             </div>
-            <button
-              type="button"
-              className={isSelected ? 'flight-history-toggle active' : 'flight-history-toggle'}
-              onClick={() => onSelect(isSelected ? null : t)}
-            >
-              {isSelected ? 'Hide track' : 'Show on map'}
-            </button>
+            <div className="flight-history-actions">
+              <button
+                type="button"
+                className={isSelected ? 'flight-history-toggle active' : 'flight-history-toggle'}
+                onClick={() => onSelect(isSelected ? null : t)}
+              >
+                {isSelected ? 'Hide track' : 'Show on map'}
+              </button>
+              <button
+                type="button"
+                className="flight-history-delete"
+                aria-label="Delete this flight"
+                onClick={() => handleDelete(t)}
+              >
+                &times;
+              </button>
+            </div>
           </div>
         )
       })}
+      <button type="button" className="flight-history-clear-all" onClick={handleClearAll}>
+        Clear all saved flights
+      </button>
     </div>
   )
 }

@@ -53,12 +53,6 @@ export default function WeatherFetch({ waypoints, altitudeFt, onFetched }: Props
           valid {result.validTime.slice(11, 16)} local at that point.
         </p>
       )}
-      <p className="footnote">
-        Pulls a general forecast (Open-Meteo) for the route's midpoint at the pressure level
-        closest to your cruise altitude &mdash; a convenience for roughing in a number, not an
-        aviation weather briefing. It has no METAR/TAF/SIGMET/NOTAM data. Always get a proper
-        pre-flight briefing before you fly. Requires an internet connection.
-      </p>
     </div>
   )
 }
