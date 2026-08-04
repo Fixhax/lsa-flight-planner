@@ -12,7 +12,11 @@ function bankTickPoint(deg: number, radius: number) {
 }
 
 export default function AttitudeIndicator() {
-  const { permission, orientation, error, requestPermission } = useDeviceOrientation()
+  // Closing this stops the sensor listener entirely (not just hiding the
+  // gauge) — no reason to keep polling motion sensors for a panel you're
+  // not looking at.
+  const [active, setActive] = useState(true)
+  const { permission, orientation, error, requestPermission } = useDeviceOrientation(active)
   const [offset, setOffset] = useState({ pitch: 0, roll: 0 })
   // The exact sign of pitch/roll from raw device sensors depends on how the
   // device is physically mounted (screen-facing angle, yoke vs kneeboard,
@@ -20,9 +24,12 @@ export default function AttitudeIndicator() {
   // These let it be corrected on the device itself if it first appears
   // backward, rather than needing a code change.
   const [invert, setInvert] = useState({ pitch: false, roll: false })
+  const [swapAxes, setSwapAxes] = useState(false)
 
-  const rawPitch = orientation?.pitchDeg ?? 0
-  const rawRoll = orientation?.rollDeg ?? 0
+  const rawPitch0 = orientation?.pitchDeg ?? 0
+  const rawRoll0 = orientation?.rollDeg ?? 0
+  const rawPitch = swapAxes ? rawRoll0 : rawPitch0
+  const rawRoll = swapAxes ? rawPitch0 : rawRoll0
   const pitch = Math.max(
     -90,
     Math.min(90, (rawPitch - offset.pitch) * (invert.pitch ? -1 : 1))
@@ -37,8 +44,9 @@ export default function AttitudeIndicator() {
   const recentRef = useRef<{ pitch: number; roll: number }[]>([])
   useEffect(() => {
     if (!orientation) return
-    recentRef.current = [...recentRef.current, { pitch: orientation.pitchDeg, roll: orientation.rollDeg }].slice(-15)
-  }, [orientation])
+    recentRef.current = [...recentRef.current, { pitch: rawPitch, roll: rawRoll }].slice(-15)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orientation, swapAxes])
 
   function handleLevel() {
     const samples = recentRef.current
@@ -46,6 +54,14 @@ export default function AttitudeIndicator() {
     const avgPitch = samples.reduce((s, v) => s + v.pitch, 0) / samples.length
     const avgRoll = samples.reduce((s, v) => s + v.roll, 0) / samples.length
     setOffset({ pitch: avgPitch, roll: avgRoll })
+  }
+
+  if (!active) {
+    return (
+      <button type="button" className="live-tracking-btn" onClick={() => setActive(true)}>
+        Show attitude indicator
+      </button>
+    )
   }
 
   if (permission === 'unsupported') {
@@ -80,10 +96,8 @@ export default function AttitudeIndicator() {
         <g clipPath="url(#ai-bezel-clip)">
           {/* The horizon geometry below is drawn with its "level" line at
               local y=0, but the gauge's actual center — where the bezel and
-              aircraft symbol sit — is (100,100), not (100,0). Without the
-              "+ 100" here, even a perfectly-zeroed pitch renders the
-              horizon ~38° off (100px / 2.6px-per-degree) from where it
-              should sit — this is what that offset corrects. */}
+              aircraft symbol sit — is (100,100), not (100,0), hence the
+              "+ 100" here. */}
           <g transform={`rotate(${-roll} 100 100) translate(0 ${100 + translateY})`}>
             <rect x="-120" y="-420" width="440" height="420" fill="#3b82c4" />
             <rect x="-120" y="0" width="440" height="420" fill="#8a5a34" />
@@ -135,11 +149,7 @@ export default function AttitudeIndicator() {
           <polygon points="100,16 94,28 106,28" fill="#fff" />
         </g>
 
-        {/* Fixed bezel ring and aircraft reference symbol — these never move.
-            Wings deliberately span most of the gauge's width (matching real
-            AI proportions) rather than a small stub in the middle, so it
-            reads clearly at a glance instead of looking like a small,
-            distant object in the middle of empty space. */}
+        {/* Fixed bezel ring and aircraft reference symbol — these never move. */}
         <circle cx="100" cy="100" r="88" fill="none" stroke="#0d1117" strokeWidth="5" />
         <g stroke="#ffcc00" strokeWidth="4.5" fill="none" strokeLinecap="round">
           <line x1="18" y1="100" x2="86" y2="100" />
@@ -153,6 +163,15 @@ export default function AttitudeIndicator() {
       <div className="attitude-readout">
         <span>Pitch {pitch >= 0 ? '+' : ''}{pitch.toFixed(0)}&deg;</span>
         <span>Bank {roll >= 0 ? '+' : ''}{roll.toFixed(0)}&deg;</span>
+      </div>
+
+      {/* Temporary diagnostic while tuning the gravity-vector formula for
+          real hardware — raw accelerometer axes plus the two computed
+          angles before calibration/inversion are applied. */}
+      <div className="attitude-debug">
+        raw xyz {orientation?.rawX.toFixed(1) ?? '—'} / {orientation?.rawY.toFixed(1) ?? '—'} /{' '}
+        {orientation?.rawZ.toFixed(1) ?? '—'} · computed pitch/roll {rawPitch0.toFixed(1)}&deg; /{' '}
+        {rawRoll0.toFixed(1)}&deg;
       </div>
 
       <div className="attitude-controls">
@@ -175,15 +194,27 @@ export default function AttitudeIndicator() {
           />
           Invert bank
         </label>
+        <label className="checkbox-field attitude-invert">
+          <input
+            type="checkbox"
+            checked={swapAxes}
+            onChange={(e) => setSwapAxes(e.target.checked)}
+          />
+          Swap pitch/bank
+        </label>
       </div>
+
+      <button type="button" className="attitude-close-btn" onClick={() => setActive(false)}>
+        Close attitude indicator
+      </button>
 
       <p className="footnote">
         Reference only — derived from this device's motion sensors, not a certified flight
         instrument. Never rely on this instead of proper training, visual reference, or (if
         equipped) certified panel instruments. "Level / center" sets the device's current
         orientation as zero, useful since a kneeboard or yoke mount is rarely perfectly level
-        itself. If pitching or banking the device moves the horizon the wrong way for how it's
-        mounted, use the invert checkboxes above to correct it.
+        itself. If pitch or bank moves the wrong way, or the two seem swapped, for how it's
+        mounted, use the checkboxes above to correct it.
       </p>
     </div>
   )
