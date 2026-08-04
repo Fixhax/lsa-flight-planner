@@ -59,43 +59,43 @@ const SPEED_UNIT_OPTIONS: { value: SpeedUnit; label: string }[] = [
 
 const MTOW_OPTIONS_KG = [450, 560, 600]
 
+// Grouped by when you'd actually reach for each one, not by topic —
+// pre-flight planning happens on the ground with time to think; in-flight
+// tools need to be found fast and read at a glance, so that group is kept
+// short and ordered by how often each gets touched in the air. Route & map
+// appears in both Pre-flight and In-flight since it's genuinely used
+// throughout — planned on the ground, then flown from in the air.
 const SECTION_GROUPS: { label: string; sections: { id: string; label: string }[] }[] = [
   {
-    label: 'Setup',
+    label: 'Pre-flight planning',
     sections: [
       { id: 'aircraft', label: 'Aircraft' },
       { id: 'cruise', label: 'Cruise settings' },
       { id: 'wind', label: 'Wind' },
       { id: 'fuel', label: 'Fuel' },
-      { id: 'weight', label: 'Payload & weight' }
-    ]
-  },
-  {
-    label: 'Route & safety',
-    sections: [
+      { id: 'weight', label: 'Payload & weight' },
       { id: 'route', label: 'Route & map' },
       { id: 'glide', label: 'Glide range' },
-      { id: 'live', label: 'Live tracking' },
-      { id: 'attitude', label: 'Attitude indicator' },
-      { id: 'history', label: 'Flight history' },
       { id: 'weatherreport', label: 'Weather report' },
-      { id: 'frequencies', label: 'Radio frequencies' }
-    ]
-  },
-  {
-    label: 'Results',
-    sections: [
-      { id: 'navlog', label: 'Nav log' },
-      { id: 'totals', label: 'Totals' },
+      { id: 'frequencies', label: 'Radio frequencies' },
+      { id: 'flightplan', label: 'Flight plan' },
       { id: 'daylight', label: 'Daylight' }
     ]
   },
   {
-    label: 'Documents',
+    label: 'In-flight',
     sections: [
-      { id: 'flightplan', label: 'Flight plan' },
-      { id: 'timer', label: 'Flight timer (logbook)' }
+      { id: 'route', label: 'Route & map' },
+      { id: 'live', label: 'Live tracking' },
+      { id: 'timer', label: 'Flight timer (logbook)' },
+      { id: 'attitude', label: 'Attitude indicator' },
+      { id: 'navlog', label: 'Nav log' },
+      { id: 'totals', label: 'Totals' }
     ]
+  },
+  {
+    label: 'Post-flight',
+    sections: [{ id: 'history', label: 'Flight history' }]
   },
   {
     label: 'Reference',
