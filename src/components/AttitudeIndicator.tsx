@@ -78,7 +78,13 @@ export default function AttitudeIndicator() {
         </defs>
 
         <g clipPath="url(#ai-bezel-clip)">
-          <g transform={`rotate(${-roll} 100 100) translate(0 ${translateY})`}>
+          {/* The horizon geometry below is drawn with its "level" line at
+              local y=0, but the gauge's actual center — where the bezel and
+              aircraft symbol sit — is (100,100), not (100,0). Without the
+              "+ 100" here, even a perfectly-zeroed pitch renders the
+              horizon ~38° off (100px / 2.6px-per-degree) from where it
+              should sit — this is what that offset corrects. */}
+          <g transform={`rotate(${-roll} 100 100) translate(0 ${100 + translateY})`}>
             <rect x="-120" y="-420" width="440" height="420" fill="#3b82c4" />
             <rect x="-120" y="0" width="440" height="420" fill="#8a5a34" />
             <line x1="-120" y1="0" x2="320" y2="0" stroke="#fff" strokeWidth="2" />
@@ -147,15 +153,6 @@ export default function AttitudeIndicator() {
       <div className="attitude-readout">
         <span>Pitch {pitch >= 0 ? '+' : ''}{pitch.toFixed(0)}&deg;</span>
         <span>Bank {roll >= 0 ? '+' : ''}{roll.toFixed(0)}&deg;</span>
-      </div>
-
-      {/* Temporary diagnostic while tracking down the calibration issue —
-          shows the unprocessed sensor values and the captured offset
-          directly, so it's possible to see whether the raw values
-          themselves are unstable versus a bug in the offset math. */}
-      <div className="attitude-debug">
-        raw beta/gamma {rawPitch.toFixed(1)}&deg; / {rawRoll.toFixed(1)}&deg; · offset{' '}
-        {offset.pitch.toFixed(1)}&deg; / {offset.roll.toFixed(1)}&deg; · samples {recentRef.current.length}
       </div>
 
       <div className="attitude-controls">

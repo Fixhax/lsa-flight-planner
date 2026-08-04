@@ -1742,14 +1742,6 @@ button:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-.attitude-debug {
-  font-size: 0.68rem;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-  opacity: 0.7;
-}
-
 .attitude-controls {
   display: flex;
   flex-wrap: wrap;
