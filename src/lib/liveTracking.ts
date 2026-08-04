@@ -6,6 +6,7 @@ export interface LivePosition {
   lon: number
   speedKt?: number // from the GPS, when the device reports it
   headingDeg?: number
+  altitudeFt?: number // from the GPS, when the device reports it — not all do
   accuracyM?: number
   timestamp: number
 }

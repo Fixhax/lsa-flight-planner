@@ -20,7 +20,7 @@ const HELP_GROUPS: HelpGroup[] = [
   {
     title: 'Glide range',
     paragraphs: [
-      "Modeled as a circle (still-air glide distance at your aircraft's glide ratio and best-glide speed), shifted downwind by the current wind — shown on the map around each waypoint at your planned cruise altitude. Best glide speed is sometimes an estimate (~1.3× stall speed) rather than a published POH figure for some aircraft — use your aircraft's actual best glide speed in a real emergency. This assumes altitude is height above the terrain you'd actually glide over, which isn't always true — treat it as a planning aid, not a guarantee."
+      "Modeled as a circle (still-air glide distance at your aircraft's glide ratio and best-glide speed), shifted downwind by the current wind. With GPS off, shown around each waypoint at your planned cruise altitude. Once GPS is on, those are replaced by a single circle that follows your live position, using your actual current altitude when the device reports one (falling back to planned cruise altitude otherwise). Best glide speed is sometimes an estimate (~1.3× stall speed) rather than a published POH figure for some aircraft — use your aircraft's actual best glide speed in a real emergency. This assumes altitude is height above the terrain you'd actually glide over, which isn't always true — treat it as a planning aid, not a guarantee."
     ]
   },
   {

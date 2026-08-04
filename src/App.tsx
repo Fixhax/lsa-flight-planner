@@ -378,6 +378,23 @@ export default function App() {
     [cruiseAltitudeFt, aircraft.glideRatio, aircraft.bestGlideSpeedKt, wind]
   )
 
+  // Same model, but using the GPS's actual reported altitude while flying
+  // instead of the planned cruise altitude — falls back to the planned
+  // figure when GPS is off or the device doesn't report altitude (not all
+  // do). Drives the single live glide-range circle on the map; the
+  // planning circles at each waypoint (from `glide` above) keep using the
+  // planned altitude regardless.
+  const liveGlide = useMemo(
+    () =>
+      computeGlide(
+        livePosition?.altitudeFt ?? cruiseAltitudeFt,
+        aircraft.glideRatio,
+        aircraft.bestGlideSpeedKt,
+        wind
+      ),
+    [livePosition?.altitudeFt, cruiseAltitudeFt, aircraft.glideRatio, aircraft.bestGlideSpeedKt, wind]
+  )
+
   function updateWaypoint(id: string, patch: Partial<Waypoint>) {
     setWaypoints((prev) => prev.map((w) => (w.id === id ? { ...w, ...patch } : w)))
   }
@@ -606,6 +623,7 @@ export default function App() {
           onInsertWaypoint={insertWaypoint}
           onSelectWaypoint={selectWaypoint}
           glide={glide}
+          liveGlide={liveGlide}
           livePosition={livePosition}
           visible={openSections.has('route') || isMapFullscreen}
           pattern={trafficPattern}

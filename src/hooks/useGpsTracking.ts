@@ -37,6 +37,9 @@ export function useGpsTracking(
           lon: pos.coords.longitude,
           speedKt: pos.coords.speed != null ? pos.coords.speed * 1.94384 : undefined,
           headingDeg: pos.coords.heading ?? undefined,
+          // Not every device/GPS chip reports altitude — falls back to the
+          // planned cruise altitude wherever this is used when absent.
+          altitudeFt: pos.coords.altitude != null ? pos.coords.altitude * 3.28084 : undefined,
           accuracyM: pos.coords.accuracy,
           timestamp: pos.timestamp
         })

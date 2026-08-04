@@ -12,7 +12,8 @@ interface Props {
   onMoveWaypoint: (id: string, lat: number, lon: number) => void
   onInsertWaypoint: (afterIndex: number, lat: number, lon: number) => void
   onSelectWaypoint: (id: string) => void
-  glide?: GlideResult
+  glide?: GlideResult // planning circles at each waypoint, based on planned cruise altitude
+  liveGlide?: GlideResult // single circle around the live position, based on actual GPS altitude
   livePosition?: LivePosition | null
   visible?: boolean // pass false while the containing panel is display:none
   pattern?: TrafficPatternResult | null
@@ -82,6 +83,7 @@ export default function RouteMap({
   onInsertWaypoint,
   onSelectWaypoint,
   glide,
+  liveGlide,
   livePosition,
   visible = true,
   pattern,
@@ -96,6 +98,7 @@ export default function RouteMap({
   const airfieldLayerRef = useRef<L.LayerGroup | null>(null)
   const patternLayerRef = useRef<L.LayerGroup | null>(null)
   const historyLayerRef = useRef<L.LayerGroup | null>(null)
+  const liveGlideLayerRef = useRef<L.LayerGroup | null>(null)
   const liveMarkerRef = useRef<L.Marker | null>(null)
   const prevIdsKeyRef = useRef<string>('')
   const onToggleFullscreenRef = useRef(onToggleFullscreen)
@@ -140,7 +143,7 @@ export default function RouteMap({
 
     // OpenAIP aviation overlay (airspace, airports, navaids, reporting
     // points combined — confirmed via OpenAIP's own published OpenAPI spec
-    // that the PNG/TMS endpoint only has one combined "openaip" layer, not
+    // that the PNG endpoint only has one combined "openaip" layer, not
     // separate per-category ones; an earlier version guessed at
     // "airspaces"/"airports"/etc. layer names from secondhand examples,
     // which 404'd since those aren't real values for this endpoint).
@@ -156,7 +159,11 @@ export default function RouteMap({
             attribution: '&copy; <a href="https://www.openaip.net">OpenAIP</a>',
             minZoom: 2,
             maxZoom: 14,
-            tms: true, // OpenAIP tiles use the flipped-Y TMS scheme, not standard XYZ
+            // Confirmed empirically by fetching tiles directly over a busy
+            // airport: standard XYZ addressing returns real chart content,
+            // while tms:true (flipped Y) lands on a mirrored, empty region
+            // and returns the same blank tile everywhere — which is why the
+            // overlay drew nothing despite loading successfully (200 OK).
             detectRetina: true,
             opacity: 0.8
           }
@@ -225,6 +232,7 @@ export default function RouteMap({
     airfieldLayerRef.current = L.layerGroup().addTo(map)
     patternLayerRef.current = L.layerGroup().addTo(map)
     historyLayerRef.current = L.layerGroup().addTo(map)
+    liveGlideLayerRef.current = L.layerGroup().addTo(map)
 
     // Every curated strip is shown on the map at all times, not just ones
     // in the current route — this list never changes at runtime, so it's
@@ -249,8 +257,15 @@ export default function RouteMap({
       airfieldLayerRef.current = null
       patternLayerRef.current = null
       historyLayerRef.current = null
+      liveGlideLayerRef.current = null
     }
   }, [])
+
+  // Only the on/off state matters for deciding whether to show the
+  // per-waypoint planning circles below — using this instead of
+  // livePosition itself in the effect's deps keeps that (expensive, redraws
+  // every marker/line) effect from re-running on every single GPS tick.
+  const hasLivePosition = !!livePosition
 
   // Redraw markers, midpoint handles, and the route line whenever the
   // waypoints change. Only auto-fits the view when waypoints are added or
@@ -282,7 +297,11 @@ export default function RouteMap({
       marker.bindPopup(`<strong>${label}</strong>${meta ? `<br/>${meta}` : ''}`)
       marker.addTo(layerGroup)
 
-      if (glide && glide.radiusNm > 0) {
+      // Once GPS is on, a single circle follows the live position instead
+      // (see the liveGlide effect below) — showing both would be redundant
+      // and clutter the map with numbers that no longer reflect where the
+      // aircraft actually is.
+      if (!hasLivePosition && glide && glide.radiusNm > 0) {
         const center = destinationPoint(wp, glide.downwindBearingDeg, glide.driftNm)
         L.circle([center.lat, center.lon], {
           radius: glide.radiusNm * 1852, // nm to metres
@@ -333,7 +352,28 @@ export default function RouteMap({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [waypoints, glide])
+  }, [waypoints, glide, hasLivePosition])
+
+  // Single glide-range circle that follows the live GPS position, using the
+  // aircraft's actual current altitude (falling back to planned cruise
+  // altitude when the device doesn't report one) rather than the static
+  // per-waypoint circles above, which stop being drawn once GPS is on.
+  useEffect(() => {
+    const liveGlideLayer = liveGlideLayerRef.current
+    if (!liveGlideLayer) return
+    liveGlideLayer.clearLayers()
+    if (!livePosition || !liveGlide || liveGlide.radiusNm <= 0) return
+
+    const center = destinationPoint(livePosition, liveGlide.downwindBearingDeg, liveGlide.driftNm)
+    L.circle([center.lat, center.lon], {
+      radius: liveGlide.radiusNm * 1852, // nm to metres
+      color: '#f2a93b',
+      weight: 1.5,
+      fillColor: '#f2a93b',
+      fillOpacity: 0.06,
+      dashArray: '4 4'
+    }).addTo(liveGlideLayer)
+  }, [livePosition, liveGlide])
 
   // Traffic pattern overlay — its own layer so it redraws independently of
   // waypoint edits/drags.
