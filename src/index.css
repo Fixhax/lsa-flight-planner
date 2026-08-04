@@ -1556,24 +1556,25 @@ button:focus-visible {
   bottom: 10px;
   z-index: 600; /* above tiles/markers, below Leaflet's own controls */
   display: flex;
-  gap: 10px;
-  padding: 6px 10px;
+  gap: 14px;
+  padding: 8px 14px;
   background: rgba(13, 17, 23, 0.72);
   border-radius: 8px;
   pointer-events: none;
-  font-size: 0.8rem;
+  font-size: 1.15rem;
+  font-weight: 600;
   color: #fff;
 }
 
 .map-hud-item {
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 5px;
   white-space: nowrap;
 }
 
 .map-hud-label {
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.6);
 }
 

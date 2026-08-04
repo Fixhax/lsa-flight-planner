@@ -742,17 +742,28 @@ export default function RouteMap({
               {Math.round(livePosition.headingDeg)}&deg;
             </div>
           )}
-          {directTo && (
-            <button
-              type="button"
-              className="map-hud-item map-hud-directto"
-              onClick={() => setDirectTo(null)}
-              title="Cancel direct-to"
-            >
-              <span className="map-hud-label">DIRECT</span>
-              {distanceNm(livePosition, directTo).toFixed(1)} nm &times;
-            </button>
-          )}
+          {directTo &&
+            (() => {
+              const directDistanceNm = distanceNm(livePosition, directTo)
+              // Ignore near-zero/noisy GPS speed rather than showing a
+              // wildly inflated or negative-feeling ETA while stationary.
+              const etaMin =
+                livePosition.speedKt !== undefined && livePosition.speedKt > 5
+                  ? Math.round((directDistanceNm / livePosition.speedKt) * 60)
+                  : null
+              return (
+                <button
+                  type="button"
+                  className="map-hud-item map-hud-directto"
+                  onClick={() => setDirectTo(null)}
+                  title="Cancel direct-to"
+                >
+                  <span className="map-hud-label">DIRECT</span>
+                  {directDistanceNm.toFixed(1)} nm
+                  {etaMin !== null && ` · ${etaMin} min`} &times;
+                </button>
+              )
+            })()}
         </div>
       )}
       <RotateKnob rotationDeg={rotationDeg} onChange={setRotationDeg} />
