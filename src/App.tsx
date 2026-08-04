@@ -721,6 +721,7 @@ export default function App() {
                 className="remove-btn"
                 onClick={() => removeWaypoint(wp.id)}
                 aria-label={`Remove waypoint ${i + 1}`}
+                title={waypoints.length <= 2 ? 'At least 2 waypoints are required' : undefined}
                 disabled={waypoints.length <= 2}
               >
                 &times;
