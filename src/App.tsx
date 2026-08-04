@@ -422,6 +422,16 @@ export default function App() {
     setWaypoints((prev) => (prev.length > 2 ? prev.filter((w) => w.id !== id) : prev))
   }
 
+  // Resets back to a fresh two-blank-waypoint route — the remove button
+  // above refuses to go below 2 waypoints (nav log/fuel calc need at least
+  // a departure and destination), which left no way to actually clear a
+  // route down to empty once you were down to your last two real points;
+  // their markers stayed on the map with no way to remove them.
+  function clearWaypoints() {
+    if (!confirm('Clear all waypoints?')) return
+    setWaypoints([makeWaypoint(), makeWaypoint()])
+  }
+
   // Called when a midpoint handle on the map is dragged and dropped: inserts
   // a fresh waypoint right after the leg's starting waypoint, at the dropped
   // position. Everything downstream (nav log, fuel burn, totals) recomputes
@@ -749,9 +759,14 @@ export default function App() {
             </div>
           ))}
         </div>
-        <button className="add-waypoint" onClick={addWaypoint}>
-          + Add waypoint
-        </button>
+        <div className="waypoint-list-actions">
+          <button className="add-waypoint" onClick={addWaypoint}>
+            + Add waypoint
+          </button>
+          <button className="clear-waypoints-btn" onClick={clearWaypoints}>
+            Clear all waypoints
+          </button>
+        </div>
       </section>
 
       <section className="panel" style={{ display: openSections.has('live') ? undefined : 'none' }}>

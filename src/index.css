@@ -764,8 +764,14 @@ button:focus-visible {
   color: var(--text-muted);
 }
 
-.add-waypoint {
+.waypoint-list-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-top: 8px;
+}
+
+.add-waypoint {
   background: var(--panel-raised);
   border: 1px dashed var(--border);
   border-radius: 8px;
@@ -773,11 +779,26 @@ button:focus-visible {
   color: var(--cyan);
   font-weight: 500;
   cursor: pointer;
-  width: 100%;
+  flex: 1;
 }
 
 .add-waypoint:hover {
   border-color: var(--cyan);
+}
+
+.clear-waypoints-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px 0;
+  white-space: nowrap;
+}
+
+.clear-waypoints-btn:hover {
+  color: var(--red);
 }
 
 /* ---------- fuel gauge (signature element) ---------- */
@@ -1554,6 +1575,23 @@ button:focus-visible {
 .map-hud-label {
   font-size: 0.65rem;
   color: rgba(255, 255, 255, 0.6);
+}
+
+/* Unlike the read-only GS/TRK items, this one is clickable (cancels the
+   direct-to line) — needs its own pointer-events override since the whole
+   .map-hud bar is click-through so it never blocks map dragging. */
+.map-hud-directto {
+  pointer-events: auto;
+  background: none;
+  border: none;
+  color: #38bdf8;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.map-hud-directto:hover {
+  color: #7dd3fc;
 }
 
 .map-rotate-knob {

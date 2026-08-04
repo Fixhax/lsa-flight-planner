@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import L from 'leaflet'
 import type { Waypoint } from '../lib/planning'
-import { destinationPoint } from '../lib/geo'
+import { destinationPoint, distanceNm } from '../lib/geo'
 import type { GlideResult } from '../lib/glide'
 import type { LivePosition } from '../lib/liveTracking'
 import { airstrips } from '../data/strips'
@@ -102,6 +102,7 @@ export default function RouteMap({
   const patternLayerRef = useRef<L.LayerGroup | null>(null)
   const historyLayerRef = useRef<L.LayerGroup | null>(null)
   const liveGlideLayerRef = useRef<L.LayerGroup | null>(null)
+  const directToLayerRef = useRef<L.LayerGroup | null>(null)
   const liveMarkerRef = useRef<L.Marker | null>(null)
   const prevIdsKeyRef = useRef<string>('')
   const onToggleFullscreenRef = useRef(onToggleFullscreen)
@@ -128,6 +129,13 @@ export default function RouteMap({
     lat: number
     lon: number
   } | null>(null)
+
+  // "Direct to" target, only meaningful while GPS is on — draws a live
+  // guidance line from the aircraft's current position to this point
+  // without touching the planned route. (With GPS off there's no live
+  // position to draw from, so "Direct to" falls back to inserting a
+  // waypoint instead — see the menu handler below.)
+  const [directTo, setDirectTo] = useState<{ lat: number; lon: number } | null>(null)
 
   // Create the map once.
   useEffect(() => {
@@ -315,6 +323,7 @@ export default function RouteMap({
     patternLayerRef.current = L.layerGroup().addTo(map)
     historyLayerRef.current = L.layerGroup().addTo(map)
     liveGlideLayerRef.current = L.layerGroup().addTo(map)
+    directToLayerRef.current = L.layerGroup().addTo(map)
 
     // Every curated strip is shown on the map at all times, not just ones
     // in the current route — this list never changes at runtime, so it's
@@ -346,6 +355,7 @@ export default function RouteMap({
       patternLayerRef.current = null
       historyLayerRef.current = null
       liveGlideLayerRef.current = null
+      directToLayerRef.current = null
     }
   }, [])
 
@@ -487,6 +497,32 @@ export default function RouteMap({
       dashArray: '4 4'
     }).addTo(liveGlideLayer)
   }, [livePosition, liveGlide])
+
+  // Clears the "direct to" target once GPS goes off — a stale guidance
+  // line with no live position to anchor it to is just confusing.
+  useEffect(() => {
+    if (!hasLivePosition) setDirectTo(null)
+  }, [hasLivePosition])
+
+  // Draws (and keeps redrawing, following the aircraft) a dashed guidance
+  // line from the live position straight to the "direct to" target picked
+  // from the long-press menu. Distinct sky-blue so it doesn't get confused
+  // with the cyan planned route, amber glide circles, or purple history
+  // track.
+  useEffect(() => {
+    const layer = directToLayerRef.current
+    if (!layer) return
+    layer.clearLayers()
+    if (!livePosition || !directTo) return
+
+    L.polyline(
+      [
+        [livePosition.lat, livePosition.lon],
+        [directTo.lat, directTo.lon]
+      ],
+      { color: '#38bdf8', weight: 3, opacity: 0.9, dashArray: '8 6' }
+    ).addTo(layer)
+  }, [livePosition, directTo])
 
   // Traffic pattern overlay — its own layer so it redraws independently of
   // waypoint edits/drags.
@@ -706,6 +742,17 @@ export default function RouteMap({
               {Math.round(livePosition.headingDeg)}&deg;
             </div>
           )}
+          {directTo && (
+            <button
+              type="button"
+              className="map-hud-item map-hud-directto"
+              onClick={() => setDirectTo(null)}
+              title="Cancel direct-to"
+            >
+              <span className="map-hud-label">DIRECT</span>
+              {distanceNm(livePosition, directTo).toFixed(1)} nm &times;
+            </button>
+          )}
         </div>
       )}
       <RotateKnob rotationDeg={rotationDeg} onChange={setRotationDeg} />
@@ -727,9 +774,18 @@ export default function RouteMap({
           <button
             type="button"
             onClick={() => {
-              // afterIndex -1 splices at index 0 — inserted as the
-              // immediate next stop, ahead of the rest of the route.
-              onInsertWaypoint(-1, longPressMenu.lat, longPressMenu.lon)
+              if (livePosition) {
+                // GPS is on: draw a live guidance line from wherever the
+                // aircraft actually is to this point, rather than editing
+                // the planned route (the waypoint list has no "current
+                // position" entry to draw from in the first place).
+                setDirectTo({ lat: longPressMenu.lat, lon: longPressMenu.lon })
+              } else {
+                // No live position to draw from — fall back to inserting
+                // this as the immediate next waypoint (afterIndex -1
+                // splices at index 0).
+                onInsertWaypoint(-1, longPressMenu.lat, longPressMenu.lon)
+              }
               setLongPressMenu(null)
             }}
           >
