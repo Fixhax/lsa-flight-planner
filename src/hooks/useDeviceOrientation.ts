@@ -60,30 +60,18 @@ export function useDeviceOrientation() {
   useEffect(() => {
     if (permission !== 'granted') return
 
-    // beta/gamma are defined relative to the device's own physical frame,
-    // not the screen's current rotation — a phone in a landscape mount
-    // reports very different raw numbers than the same tilt in portrait.
-    // Compensating by the current screen angle keeps pitch/roll meaning
-    // consistent regardless of how the device is actually mounted.
+    // beta/gamma are defined relative to the device's own physical frame.
+    // An earlier version tried to auto-compensate for the current screen
+    // orientation angle so this would read correctly held any which way —
+    // but that angle isn't reliably defined for a device sitting relatively
+    // flat in a mount, and if it read differently at calibration time than
+    // a moment later, the meaning of "pitch" would shift out from under the
+    // calibration, making Level/Center appear to not work. Simpler and more
+    // predictable: always beta = pitch, gamma = roll, and let Level/Center
+    // plus the invert toggles account for whatever the actual mount is.
     function handleOrientation(e: DeviceOrientationEvent) {
       if (e.beta === null || e.gamma === null) return
-      const angle = window.screen.orientation?.angle ?? 0
-      let pitchDeg: number
-      let rollDeg: number
-      if (angle === 90) {
-        pitchDeg = -e.gamma
-        rollDeg = e.beta
-      } else if (angle === 270 || angle === -90) {
-        pitchDeg = e.gamma
-        rollDeg = -e.beta
-      } else if (angle === 180) {
-        pitchDeg = -e.beta
-        rollDeg = -e.gamma
-      } else {
-        pitchDeg = e.beta
-        rollDeg = e.gamma
-      }
-      setOrientation({ pitchDeg, rollDeg })
+      setOrientation({ pitchDeg: e.beta, rollDeg: e.gamma })
     }
 
     window.addEventListener('deviceorientation', handleOrientation)

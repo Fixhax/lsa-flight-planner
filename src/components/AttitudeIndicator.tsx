@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useDeviceOrientation } from '../hooks/useDeviceOrientation'
 
 const PITCH_LADDER = [-60, -50, -40, -30, -20, -10, 10, 20, 30, 40, 50, 60]
@@ -30,8 +30,22 @@ export default function AttitudeIndicator() {
   const roll = (rawRoll - offset.roll) * (invert.roll ? -1 : 1)
   const translateY = pitch * PX_PER_DEG
 
+  // Keeps the last ~15 readings so Level/Center can average them instead of
+  // capturing whatever single sample happened to land at tap time — a tap
+  // on the screen can itself nudge the device slightly, so one noisy
+  // reading shouldn't become a lasting miscalibration.
+  const recentRef = useRef<{ pitch: number; roll: number }[]>([])
+  useEffect(() => {
+    if (!orientation) return
+    recentRef.current = [...recentRef.current, { pitch: orientation.pitchDeg, roll: orientation.rollDeg }].slice(-15)
+  }, [orientation])
+
   function handleLevel() {
-    setOffset({ pitch: rawPitch, roll: rawRoll })
+    const samples = recentRef.current
+    if (samples.length === 0) return
+    const avgPitch = samples.reduce((s, v) => s + v.pitch, 0) / samples.length
+    const avgRoll = samples.reduce((s, v) => s + v.roll, 0) / samples.length
+    setOffset({ pitch: avgPitch, roll: avgRoll })
   }
 
   if (permission === 'unsupported') {
@@ -115,15 +129,19 @@ export default function AttitudeIndicator() {
           <polygon points="100,16 94,28 106,28" fill="#fff" />
         </g>
 
-        {/* Fixed bezel ring and aircraft reference symbol — these never move. */}
+        {/* Fixed bezel ring and aircraft reference symbol — these never move.
+            Wings deliberately span most of the gauge's width (matching real
+            AI proportions) rather than a small stub in the middle, so it
+            reads clearly at a glance instead of looking like a small,
+            distant object in the middle of empty space. */}
         <circle cx="100" cy="100" r="88" fill="none" stroke="#0d1117" strokeWidth="5" />
-        <g stroke="#ffcc00" strokeWidth="3.5" fill="none" strokeLinecap="round">
-          <line x1="55" y1="100" x2="82" y2="100" />
-          <line x1="118" y1="100" x2="145" y2="100" />
-          <polyline points="82,100 88,106" />
-          <polyline points="118,100 112,106" />
+        <g stroke="#ffcc00" strokeWidth="4.5" fill="none" strokeLinecap="round">
+          <line x1="18" y1="100" x2="86" y2="100" />
+          <line x1="114" y1="100" x2="182" y2="100" />
+          <polyline points="86,100 86,110" />
+          <polyline points="114,100 114,110" />
         </g>
-        <circle cx="100" cy="100" r="3" fill="#ffcc00" />
+        <circle cx="100" cy="100" r="4" fill="#ffcc00" />
       </svg>
 
       <div className="attitude-readout">
