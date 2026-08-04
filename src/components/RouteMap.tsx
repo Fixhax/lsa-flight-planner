@@ -6,6 +6,7 @@ import type { GlideResult } from '../lib/glide'
 import type { LivePosition } from '../lib/liveTracking'
 import { airstrips } from '../data/strips'
 import type { TrafficPatternResult } from '../lib/trafficPattern'
+import MapInfoDrawer from './MapInfoDrawer'
 
 interface Props {
   waypoints: Waypoint[]
@@ -108,6 +109,7 @@ export default function RouteMap({
   const onToggleFullscreenRef = useRef(onToggleFullscreen)
   onToggleFullscreenRef.current = onToggleFullscreen
   const followBtnRef = useRef<HTMLButtonElement | null>(null)
+  const infoBtnRef = useRef<HTMLButtonElement | null>(null)
   const wasFollowingRef = useRef(false)
   const longPressMenuRef = useRef<HTMLDivElement | null>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -136,6 +138,11 @@ export default function RouteMap({
   // position to draw from, so "Direct to" falls back to inserting a
   // waypoint instead — see the menu handler below.)
   const [directTo, setDirectTo] = useState<{ lat: number; lon: number } | null>(null)
+
+  // Collapsible drawer with nearby radio frequencies and an OpenAIP
+  // airspace-ceiling lookup — toggled from a button on the map itself so
+  // it's reachable without leaving this panel while flying.
+  const [showInfoDrawer, setShowInfoDrawer] = useState(false)
 
   // Create the map once.
   useEffect(() => {
@@ -233,6 +240,22 @@ export default function RouteMap({
       }
     })
     new FollowControl({ position: 'topleft' }).addTo(map)
+
+    // Nearby-info drawer — radio frequencies within range and an OpenAIP
+    // airspace-ceiling lookup, without leaving the map.
+    const InfoControl = L.Control.extend({
+      onAdd: function () {
+        const btn = L.DomUtil.create('button', 'map-info-btn')
+        btn.type = 'button'
+        btn.innerHTML = '&#8505;'
+        btn.title = 'Nearby frequencies & airspace'
+        L.DomEvent.disableClickPropagation(btn)
+        btn.onclick = () => setShowInfoDrawer((s) => !s)
+        infoBtnRef.current = btn
+        return btn
+      }
+    })
+    new InfoControl({ position: 'topleft' }).addTo(map)
 
     // Manually panning the map means the pilot wants to look elsewhere —
     // drop out of follow mode rather than keep fighting their drag on the
@@ -634,6 +657,10 @@ export default function RouteMap({
     followBtnRef.current?.classList.toggle('active', follow)
   }, [follow])
 
+  useEffect(() => {
+    infoBtnRef.current?.classList.toggle('active', showInfoDrawer)
+  }, [showInfoDrawer])
+
   // Rotates the whole map to the manually-chosen direction, by CSS-rotating
   // the container itself — tiles and markers (including the live plane
   // icon) all turn together. Driven entirely by the rotate knob below, not
@@ -767,6 +794,13 @@ export default function RouteMap({
         </div>
       )}
       <RotateKnob rotationDeg={rotationDeg} onChange={setRotationDeg} />
+      {showInfoDrawer && (
+        <MapInfoDrawer
+          waypoints={waypoints}
+          livePosition={livePosition}
+          onClose={() => setShowInfoDrawer(false)}
+        />
+      )}
       {longPressMenu && (
         <div
           ref={longPressMenuRef}

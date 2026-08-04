@@ -496,6 +496,20 @@ button:focus-visible {
 
 .leaflet-control-layers-toggle {
   filter: invert(1);
+  /* Leaflet defaults this to 36x36 — sized up along with the other map
+     controls below so it's easy to hit one-handed in flight. */
+  width: 44px !important;
+  height: 44px !important;
+}
+
+/* Leaflet's built-in zoom buttons default to a cramped 26x26 with 18px
+   glyphs — every map control gets bumped to a consistent, easy-to-hit
+   ~44px touch target for in-flight use, not just the custom ones below. */
+.leaflet-control-zoom a {
+  width: 44px !important;
+  height: 44px !important;
+  line-height: 44px !important;
+  font-size: 22px !important;
 }
 
 .leaflet-control-layers-expanded {
@@ -1505,11 +1519,11 @@ button:focus-visible {
 .map-fullscreen-btn,
 .map-follow-btn,
 .map-trackup-btn {
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   background: var(--panel-raised);
   border: none;
-  font-size: 16px;
+  font-size: 22px;
   cursor: pointer;
   color: var(--text);
 }
@@ -1524,6 +1538,127 @@ button:focus-visible {
 .map-trackup-btn.active {
   background: var(--cyan);
   color: var(--bg);
+}
+
+.map-info-btn {
+  width: 44px;
+  height: 44px;
+  background: var(--panel-raised);
+  border: none;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.map-info-btn:hover {
+  background: var(--panel);
+}
+
+.map-info-btn.active {
+  background: var(--cyan);
+  color: var(--bg);
+}
+
+/* Collapsible drawer opened from the info button — a floating panel over
+   the map itself so nearby frequencies/airspace are reachable without
+   leaving the Route & map view. */
+.map-info-drawer {
+  position: absolute;
+  /* Starts below the layers control (top-right, same corner) rather than
+     directly under it, so the two don't visually collide when both are
+     open. */
+  top: 62px;
+  right: 10px;
+  z-index: 900;
+  width: min(320px, calc(100% - 20px));
+  max-height: calc(100% - 72px);
+  overflow-y: auto;
+  background: var(--panel-raised);
+  border: 1px solid var(--cyan);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  font-size: 0.85rem;
+}
+
+.map-info-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.map-info-drawer-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.map-info-drawer-close:hover {
+  color: var(--text);
+}
+
+.map-info-section + .map-info-section {
+  border-top: 1px solid var(--border);
+}
+
+.map-info-section-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-weight: 500;
+  text-align: left;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.map-info-caret {
+  color: var(--cyan);
+}
+
+.map-info-section-body {
+  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.map-info-check-btn {
+  background: var(--panel);
+  border: 1px solid var(--cyan);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--cyan);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.map-info-check-btn:hover {
+  background: rgba(79, 209, 197, 0.1);
+}
+
+.map-info-check-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.map-info-ceiling-result {
+  line-height: 1.4;
+}
+
+.map-info-ceiling-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .route-map-wrap-fullscreen {
