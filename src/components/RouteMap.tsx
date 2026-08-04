@@ -22,18 +22,21 @@ interface Props {
   historyTrack?: { lat: number; lon: number }[] | null
 }
 
+// Icon size doubles as the draggable hit-area (Leaflet centers it on
+// iconAnchor), so sizing it well above the visible dot makes these
+// meaningfully easier to grab on a touchscreen, not just easier to see.
 const waypointIcon = L.divIcon({
   className: 'map-waypoint-icon',
   html: '<div class="map-waypoint-dot"></div>',
-  iconSize: [16, 16],
-  iconAnchor: [8, 8]
+  iconSize: [26, 26],
+  iconAnchor: [13, 13]
 })
 
 const midpointIcon = L.divIcon({
   className: 'map-midpoint-icon',
   html: '<div class="map-midpoint-dot"></div>',
-  iconSize: [12, 12],
-  iconAnchor: [6, 6]
+  iconSize: [20, 20],
+  iconAnchor: [10, 10]
 })
 
 // Every curated strip, shown always (not just ones in the current route) so
@@ -315,10 +318,12 @@ export default function RouteMap({
     })
 
     if (valid.length >= 2) {
-      L.polyline(
-        valid.map((wp) => [wp.lat, wp.lon] as L.LatLngTuple),
-        { color: '#4fd1c5', weight: 3, opacity: 0.85 }
-      ).addTo(layerGroup)
+      const routeLatLngs = valid.map((wp) => [wp.lat, wp.lon] as L.LatLngTuple)
+      // Dark casing underneath the bright route line, same trick used for
+      // the traffic pattern legs — keeps it readable against light terrain
+      // tiles, not just dark ones.
+      L.polyline(routeLatLngs, { color: '#0d1117', weight: 7, opacity: 0.6 }).addTo(layerGroup)
+      L.polyline(routeLatLngs, { color: '#4fd1c5', weight: 4, opacity: 1 }).addTo(layerGroup)
 
       // Midpoint drag handles: dragging one inserts a new waypoint between
       // the two it sits between, at the dropped position.

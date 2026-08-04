@@ -398,23 +398,33 @@ button:focus-visible {
   transition: transform 0.25s linear;
 }
 
+/* The icon box is a larger touch target than the visible dot inside it
+   (see RouteMap.tsx) — center the dot within it rather than letting it sit
+   at the box's top-left corner. */
+.map-waypoint-icon,
+.map-midpoint-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .map-waypoint-dot {
-  width: 14px;
-  height: 14px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: var(--cyan);
-  border: 2px solid var(--bg);
+  border: 3px solid var(--bg);
   box-shadow: 0 0 0 2px var(--cyan);
   cursor: grab;
 }
 
 .map-midpoint-dot {
-  width: 10px;
-  height: 10px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: var(--panel);
-  border: 2px solid var(--cyan);
-  opacity: 0.8;
+  border: 3px solid var(--cyan);
+  opacity: 0.85;
   cursor: grab;
 }
 
