@@ -8,6 +8,12 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate', // friends you share this with always get the latest build automatically
+      // Registered manually in main.tsx instead, so a new deployment can
+      // force a reload once it's ready — the default auto-injected script
+      // updates the service worker in the background but doesn't refresh
+      // a page you already have open, so it can sit on a stale build until
+      // closed and reopened.
+      injectRegister: false,
       includeAssets: ['icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
         name: 'LSA Flight Planner',

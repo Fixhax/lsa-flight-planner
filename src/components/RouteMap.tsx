@@ -451,6 +451,13 @@ export default function RouteMap({
       if (!wrap || !container) return
       if (isRotated) {
         const { width, height } = wrap.getBoundingClientRect()
+        // The wrapper measures 0×0 while its panel is display:none (e.g. a
+        // different accordion section is open) — sizing off that would
+        // shrink the actual map container to nothing and leave it that way
+        // even after the panel becomes visible again, since nothing else
+        // would trigger a recalculation. Just leave sizing as it was; the
+        // `visible` dependency below re-runs this once it's back on screen.
+        if (width === 0 || height === 0) return
         const diagonal = Math.ceil(Math.sqrt(width * width + height * height))
         container.style.position = 'absolute'
         container.style.width = `${diagonal}px`
@@ -469,11 +476,11 @@ export default function RouteMap({
 
     applySizing()
     if (!isRotated) return
-    // Re-measure on device rotation/resize while active, since the
-    // diagonal depends on the wrapper's current size.
+    // Re-measure on device rotation/resize, and when the panel becomes
+    // visible again after being hidden (see the 0×0 guard above).
     window.addEventListener('resize', applySizing)
     return () => window.removeEventListener('resize', applySizing)
-  }, [isRotated, fullscreen])
+  }, [isRotated, fullscreen, visible])
 
   // Leaflet measures its container at creation/update time. If that
   // container was display:none (e.g. its section wasn't the open one),
@@ -558,7 +565,7 @@ function RotateKnob({
     const dx = e.clientX - lastX
     lastXRef.current = e.clientX
     if (dx === 0) return
-    onChange((rotationDeg + dx * ROTATE_SENSITIVITY_DEG_PER_PX + 360) % 360)
+    onChange(Math.round(rotationDeg + dx * ROTATE_SENSITIVITY_DEG_PER_PX + 360) % 360)
   }
 
   function handlePointerUp(e: ReactPointerEvent) {
