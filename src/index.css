@@ -1712,6 +1712,53 @@ button:focus-visible {
   color: var(--red);
 }
 
+/* ---------- attitude indicator ---------- */
+
+.attitude-permission {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.attitude-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.attitude-indicator {
+  width: 100%;
+  max-width: 280px;
+  aspect-ratio: 1;
+}
+
+.attitude-readout {
+  display: flex;
+  gap: 20px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.attitude-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.attitude-level-btn {
+  font-size: 0.8rem;
+  padding: 8px 14px;
+}
+
+.attitude-invert {
+  font-size: 0.78rem;
+}
+
 /* ---------- help ---------- */
 
 .help-panel {

@@ -45,6 +45,12 @@ const HELP_GROUPS: HelpGroup[] = [
     ]
   },
   {
+    title: 'Attitude indicator',
+    paragraphs: [
+      "Uses this device's motion sensors — iOS will prompt for a one-time \"Motion & Orientation Access\" permission the first time you tap Enable. Reference only, not a certified flight instrument. \"Level / center\" resets the current orientation as zero, since a kneeboard or mount is rarely perfectly level itself — recalibrate if it drifts or after remounting the device."
+    ]
+  },
+  {
     title: 'Flight history',
     paragraphs: [
       "Turn on GPS tracking before takeoff and log the landing in the flight timer to save that leg's track automatically. Selecting a saved flight draws its GPS track (dashed purple) on the Route & map panel and zooms to fit it."

@@ -31,6 +31,7 @@ import { loadCloudPlan, saveCloudPlan, saveFlightTrack, type SavedFlightTrack } 
 import { distanceNm } from './lib/geo'
 import FlightHistory from './components/FlightHistory'
 import Help from './components/Help'
+import AttitudeIndicator from './components/AttitudeIndicator'
 
 let nextId = 1
 function makeWaypoint(strip?: AirstripEntry): Waypoint {
@@ -75,6 +76,7 @@ const SECTION_GROUPS: { label: string; sections: { id: string; label: string }[]
       { id: 'route', label: 'Route & map' },
       { id: 'glide', label: 'Glide range' },
       { id: 'live', label: 'Live tracking' },
+      { id: 'attitude', label: 'Attitude indicator' },
       { id: 'history', label: 'Flight history' },
       { id: 'weatherreport', label: 'Weather report' },
       { id: 'frequencies', label: 'Radio frequencies' }
@@ -750,6 +752,11 @@ export default function App() {
           start={gps.start}
           stop={gps.stop}
         />
+      </section>
+
+      <section className="panel" style={{ display: openSections.has('attitude') ? undefined : 'none' }}>
+        <p className="panel-label">Attitude indicator</p>
+        <AttitudeIndicator />
       </section>
 
       <section className="panel" style={{ display: openSections.has('history') ? undefined : 'none' }}>
