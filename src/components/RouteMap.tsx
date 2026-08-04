@@ -108,6 +108,9 @@ export default function RouteMap({
   onToggleFullscreenRef.current = onToggleFullscreen
   const followBtnRef = useRef<HTMLButtonElement | null>(null)
   const wasFollowingRef = useRef(false)
+  const longPressMenuRef = useRef<HTMLDivElement | null>(null)
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const longPressStartRef = useRef<{ x: number; y: number } | null>(null)
 
   // "Follow me" (re-center on GPS position) and manual map rotation (via
   // the on-map rotate knob) are view-only preferences, kept local to the
@@ -115,6 +118,16 @@ export default function RouteMap({
   // currently pointing "up" on screen — 0 means north-up.
   const [follow, setFollow] = useState(false)
   const [rotationDeg, setRotationDeg] = useState(0)
+
+  // Push-and-hold on empty map space opens a small "add waypoint here" /
+  // "direct to here" menu at that spot. screenX/screenY are relative to
+  // wrapRef, for positioning the menu; lat/lon are the tapped location.
+  const [longPressMenu, setLongPressMenu] = useState<{
+    screenX: number
+    screenY: number
+    lat: number
+    lon: number
+  } | null>(null)
 
   // Create the map once.
   useEffect(() => {
@@ -230,6 +243,72 @@ export default function RouteMap({
       wrapRef.current.appendChild(controlContainer)
     }
 
+    // Push-and-hold anywhere on the map (that isn't a marker/popup/control)
+    // opens the add-waypoint/direct-to menu at that point. Desktop right-
+    // click opens the same menu, since holding a mouse button down isn't a
+    // natural gesture there. Plain native listeners rather than Leaflet
+    // events, since Leaflet has no built-in long-press concept.
+    const LONG_PRESS_MS = 550
+    const LONG_PRESS_MOVE_CANCEL_PX = 12
+
+    function clearLongPressTimer() {
+      if (longPressTimerRef.current !== null) {
+        clearTimeout(longPressTimerRef.current)
+        longPressTimerRef.current = null
+      }
+    }
+
+    function openLongPressMenuAt(clientX: number, clientY: number) {
+      const wrap = wrapRef.current
+      if (!wrap) return
+      const latlng = map.mouseEventToLatLng({ clientX, clientY } as unknown as MouseEvent)
+      const rect = wrap.getBoundingClientRect()
+      setLongPressMenu({ screenX: clientX - rect.left, screenY: clientY - rect.top, lat: latlng.lat, lon: latlng.lng })
+    }
+
+    function isOnInteractiveElement(target: EventTarget | null) {
+      const el = target as HTMLElement | null
+      return !!el?.closest('.leaflet-marker-icon, .leaflet-popup, .leaflet-control')
+    }
+
+    function handlePointerDown(e: PointerEvent) {
+      if (isOnInteractiveElement(e.target)) return
+      longPressStartRef.current = { x: e.clientX, y: e.clientY }
+      clearLongPressTimer()
+      const { clientX, clientY } = e
+      longPressTimerRef.current = setTimeout(() => {
+        longPressTimerRef.current = null
+        openLongPressMenuAt(clientX, clientY)
+      }, LONG_PRESS_MS)
+    }
+
+    function handlePointerMove(e: PointerEvent) {
+      const start = longPressStartRef.current
+      if (!start) return
+      if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > LONG_PRESS_MOVE_CANCEL_PX) {
+        clearLongPressTimer()
+        longPressStartRef.current = null
+      }
+    }
+
+    function handlePointerEnd() {
+      clearLongPressTimer()
+      longPressStartRef.current = null
+    }
+
+    function handleContextMenu(e: MouseEvent) {
+      if (isOnInteractiveElement(e.target)) return
+      e.preventDefault()
+      openLongPressMenuAt(e.clientX, e.clientY)
+    }
+
+    const container = containerRef.current!
+    container.addEventListener('pointerdown', handlePointerDown)
+    container.addEventListener('pointermove', handlePointerMove)
+    container.addEventListener('pointerup', handlePointerEnd)
+    container.addEventListener('pointercancel', handlePointerEnd)
+    container.addEventListener('contextmenu', handleContextMenu)
+
     mapRef.current = map
     layerGroupRef.current = L.layerGroup().addTo(map)
     airfieldLayerRef.current = L.layerGroup().addTo(map)
@@ -254,6 +333,12 @@ export default function RouteMap({
     })
 
     return () => {
+      clearLongPressTimer()
+      container.removeEventListener('pointerdown', handlePointerDown)
+      container.removeEventListener('pointermove', handlePointerMove)
+      container.removeEventListener('pointerup', handlePointerEnd)
+      container.removeEventListener('pointercancel', handlePointerEnd)
+      container.removeEventListener('contextmenu', handleContextMenu)
       map.remove()
       mapRef.current = null
       layerGroupRef.current = null
@@ -263,6 +348,29 @@ export default function RouteMap({
       liveGlideLayerRef.current = null
     }
   }, [])
+
+  // Closes the menu on an outside tap/click, and whenever the map's
+  // dimensions change in a way that would make its saved screen position
+  // stale (e.g. entering/leaving fullscreen).
+  useEffect(() => {
+    if (!longPressMenu) return
+    function handleOutside(e: PointerEvent) {
+      if (longPressMenuRef.current && !longPressMenuRef.current.contains(e.target as Node)) {
+        setLongPressMenu(null)
+      }
+    }
+    // Deferred so the same press/click that opened the menu doesn't
+    // immediately close it again via this same listener.
+    const id = setTimeout(() => document.addEventListener('pointerdown', handleOutside), 0)
+    return () => {
+      clearTimeout(id)
+      document.removeEventListener('pointerdown', handleOutside)
+    }
+  }, [longPressMenu])
+
+  useEffect(() => {
+    setLongPressMenu(null)
+  }, [fullscreen])
 
   // Only the on/off state matters for deciding whether to show the
   // per-waypoint planning circles below — using this instead of
@@ -601,6 +709,34 @@ export default function RouteMap({
         </div>
       )}
       <RotateKnob rotationDeg={rotationDeg} onChange={setRotationDeg} />
+      {longPressMenu && (
+        <div
+          ref={longPressMenuRef}
+          className="map-longpress-menu"
+          style={{ left: longPressMenu.screenX, top: longPressMenu.screenY }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              onInsertWaypoint(waypoints.length - 1, longPressMenu.lat, longPressMenu.lon)
+              setLongPressMenu(null)
+            }}
+          >
+            + Add waypoint here
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              // afterIndex -1 splices at index 0 — inserted as the
+              // immediate next stop, ahead of the rest of the route.
+              onInsertWaypoint(-1, longPressMenu.lat, longPressMenu.lon)
+              setLongPressMenu(null)
+            }}
+          >
+            &#10148; Direct to here
+          </button>
+        </div>
+      )}
     </div>
   )
 }

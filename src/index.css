@@ -396,6 +396,49 @@ button:focus-visible {
   width: 100%;
   height: 100%;
   transition: transform 0.25s linear;
+  /* Stops iOS/Android's native text-selection loupe or "open link" callout
+     from popping up during the push-and-hold gesture, which would otherwise
+     fight with the custom long-press menu below. */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Push-and-hold (or right-click) on the map opens this small menu at the
+   tapped point, offset up and centered so it reads like a callout pointing
+   at the location rather than covering it. */
+.map-longpress-menu {
+  position: absolute;
+  z-index: 2000;
+  transform: translate(-50%, calc(-100% - 14px));
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--panel-raised);
+  border: 1px solid var(--cyan);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  min-width: 180px;
+}
+
+.map-longpress-menu button {
+  background: none;
+  border: none;
+  color: var(--text);
+  text-align: left;
+  padding: 12px 14px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.map-longpress-menu button:hover,
+.map-longpress-menu button:focus-visible {
+  background: rgba(79, 209, 197, 0.15);
+}
+
+.map-longpress-menu button + button {
+  border-top: 1px solid var(--border);
 }
 
 /* The icon box is a larger touch target than the visible dot inside it
