@@ -196,6 +196,18 @@ export default function RouteMap({
     // next GPS update, matching how phone nav apps behave.
     map.on('dragstart', () => setFollow(false))
 
+    // Track-up mode grows and re-centers the actual Leaflet container well
+    // beyond the visible frame (see the sizing effect below), which would
+    // otherwise carry Leaflet's own control buttons — anchored to that
+    // container's corners — off-screen with it. Move the control layer out
+    // to the stable wrapper instead, which Leaflet's own corner-anchoring
+    // CSS positions correctly since the wrapper is themselves `position:
+    // relative`.
+    const controlContainer = containerRef.current?.querySelector('.leaflet-control-container')
+    if (controlContainer && wrapRef.current) {
+      wrapRef.current.appendChild(controlContainer)
+    }
+
     mapRef.current = map
     layerGroupRef.current = L.layerGroup().addTo(map)
     airfieldLayerRef.current = L.layerGroup().addTo(map)
@@ -428,17 +440,56 @@ export default function RouteMap({
   // Rotates the whole map so the current track points up, by CSS-rotating
   // the container itself — tiles and markers (including the live plane
   // icon) all turn together. This is a lightweight approach rather than a
-  // rotation-aware tile renderer, so: dragging/clicking position while
+  // rotation-aware tile renderer, so dragging/clicking position while
   // rotated will feel offset (best used together with Follow, not while
-  // editing the route), and tiles right at the rotated corners can
-  // occasionally take a moment to catch up. Fine for reference use in the
-  // air, which is what this is for.
+  // editing the route).
   useEffect(() => {
     const heading = trackUp ? livePosition?.headingDeg : undefined
     if (containerRef.current) {
       containerRef.current.style.transform = heading ? `rotate(${-heading}deg)` : ''
     }
   }, [trackUp, livePosition?.headingDeg])
+
+  // Leaflet only ever loads tiles to cover its own (unrotated) container
+  // size — rotating that container via CSS then visibly exposes the
+  // square edge of loaded tiles near the frame's corners, since the
+  // rotated square's bounding box is bigger than the square itself. Fix:
+  // while rotating, grow the actual Leaflet container to the wrapper's
+  // diagonal (so it's guaranteed to cover the frame at any rotation
+  // angle) and center it, then let Leaflet re-measure and load tiles for
+  // that larger area. Reverts to filling the wrapper exactly when off.
+  useEffect(() => {
+    const wrap = wrapRef.current
+    const container = containerRef.current
+    if (!wrap || !container) return
+
+    function applySizing() {
+      if (!wrap || !container) return
+      if (trackUp) {
+        const { width, height } = wrap.getBoundingClientRect()
+        const diagonal = Math.ceil(Math.sqrt(width * width + height * height))
+        container.style.position = 'absolute'
+        container.style.width = `${diagonal}px`
+        container.style.height = `${diagonal}px`
+        container.style.left = `${(width - diagonal) / 2}px`
+        container.style.top = `${(height - diagonal) / 2}px`
+      } else {
+        container.style.position = ''
+        container.style.width = ''
+        container.style.height = ''
+        container.style.left = ''
+        container.style.top = ''
+      }
+      mapRef.current?.invalidateSize()
+    }
+
+    applySizing()
+    if (!trackUp) return
+    // Re-measure on device rotation/resize while active, since the
+    // diagonal depends on the wrapper's current size.
+    window.addEventListener('resize', applySizing)
+    return () => window.removeEventListener('resize', applySizing)
+  }, [trackUp, fullscreen])
 
   // Leaflet measures its container at creation/update time. If that
   // container was display:none (e.g. its section wasn't the open one),
