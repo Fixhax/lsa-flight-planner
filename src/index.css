@@ -384,6 +384,12 @@ button:focus-visible {
   border: 1px solid var(--border);
   background: var(--panel-raised);
   overflow: hidden; /* clips the rotating map inside to this stable frame */
+  /* iOS/WebKit sometimes fails to clip a rotated (transformed) child to a
+     border-radius + overflow:hidden ancestor unless that ancestor is
+     forced onto its own compositing layer — this does that. */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  isolation: isolate;
 }
 
 .route-map {
