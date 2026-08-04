@@ -529,9 +529,15 @@ export default function RouteMap({
 // A small draggable compass dial for manually rotating the map — kept off
 // the map surface entirely (rather than a two-finger twist gesture on the
 // map itself) so it never competes with Leaflet's own two-finger
-// pinch-to-zoom. Drag anywhere around the dial; the angle from its center
-// to the pointer becomes the new rotation directly. Double-click/tap
-// resets to north-up.
+// pinch-to-zoom. Drag left/right anywhere on the dial like a jog wheel —
+// rotation tracks how far you've swiped, not your finger's exact position,
+// so it stays stable and predictable even with imprecise touch input.
+// (An earlier version computed an absolute angle from the dial's center,
+// which made tiny movements near that center swing the angle wildly —
+// exactly the "choppy, flips direction" feel this replaces.) Double-click/
+// tap resets to north-up.
+const ROTATE_SENSITIVITY_DEG_PER_PX = 1.2
+
 function RotateKnob({
   rotationDeg,
   onChange
@@ -539,38 +545,29 @@ function RotateKnob({
   rotationDeg: number
   onChange: (deg: number) => void
 }) {
-  const knobRef = useRef<HTMLDivElement | null>(null)
-  const draggingRef = useRef(false)
-
-  function angleFromPointer(e: { clientX: number; clientY: number }): number {
-    const el = knobRef.current
-    if (!el) return rotationDeg
-    const rect = el.getBoundingClientRect()
-    const dx = e.clientX - (rect.left + rect.width / 2)
-    const dy = e.clientY - (rect.top + rect.height / 2)
-    const deg = Math.atan2(dx, -dy) * (180 / Math.PI)
-    return deg < 0 ? deg + 360 : deg
-  }
+  const lastXRef = useRef<number | null>(null)
 
   function handlePointerDown(e: ReactPointerEvent) {
-    draggingRef.current = true
+    lastXRef.current = e.clientX
     e.currentTarget.setPointerCapture(e.pointerId)
-    onChange(angleFromPointer(e))
   }
 
   function handlePointerMove(e: ReactPointerEvent) {
-    if (!draggingRef.current) return
-    onChange(angleFromPointer(e))
+    const lastX = lastXRef.current
+    if (lastX === null) return
+    const dx = e.clientX - lastX
+    lastXRef.current = e.clientX
+    if (dx === 0) return
+    onChange((rotationDeg + dx * ROTATE_SENSITIVITY_DEG_PER_PX + 360) % 360)
   }
 
   function handlePointerUp(e: ReactPointerEvent) {
-    draggingRef.current = false
+    lastXRef.current = null
     e.currentTarget.releasePointerCapture(e.pointerId)
   }
 
   return (
     <div
-      ref={knobRef}
       className={rotationDeg ? 'map-rotate-knob active' : 'map-rotate-knob'}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
