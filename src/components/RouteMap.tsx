@@ -138,26 +138,29 @@ export default function RouteMap({
 
     osm.addTo(map)
 
-    // OpenAIP aviation overlays (airspace, airports, navaids, reporting
-    // points) — free tiles, but need an API key. Skipped entirely if one
-    // isn't configured, rather than showing broken/empty overlay options.
+    // OpenAIP aviation overlay (airspace, airports, navaids, reporting
+    // points combined — confirmed via OpenAIP's own published OpenAPI spec
+    // that the PNG/TMS endpoint only has one combined "openaip" layer, not
+    // separate per-category ones; an earlier version guessed at
+    // "airspaces"/"airports"/etc. layer names from secondhand examples,
+    // which 404'd since those aren't real values for this endpoint).
+    // Skipped entirely if no API key is configured, rather than showing a
+    // broken/empty layer option.
     const openAipKey = import.meta.env.VITE_OPENAIP_API_KEY as string | undefined
     let openAipOverlays: Record<string, L.TileLayer> | undefined
     if (openAipKey) {
-      const openAipLayer = (layer: string, opacity: number) =>
-        L.tileLayer(`https://api.tiles.openaip.net/api/data/${layer}/{z}/{x}/{y}.png?apiKey=${openAipKey}`, {
-          attribution: '&copy; <a href="https://www.openaip.net">OpenAIP</a>',
-          minZoom: 4,
-          maxZoom: 14,
-          tms: true, // OpenAIP tiles use the flipped-Y TMS scheme, not standard XYZ
-          detectRetina: true,
-          opacity
-        })
       openAipOverlays = {
-        'Airspace (OpenAIP)': openAipLayer('airspaces', 0.5),
-        'Airports (OpenAIP)': openAipLayer('airports', 0.8),
-        'Navaids (OpenAIP)': openAipLayer('navaids', 0.8),
-        'Reporting points (OpenAIP)': openAipLayer('reporting-points', 0.8)
+        'Aviation overlay (OpenAIP)': L.tileLayer(
+          `https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey=${openAipKey}`,
+          {
+            attribution: '&copy; <a href="https://www.openaip.net">OpenAIP</a>',
+            minZoom: 2,
+            maxZoom: 14,
+            tms: true, // OpenAIP tiles use the flipped-Y TMS scheme, not standard XYZ
+            detectRetina: true,
+            opacity: 0.8
+          }
+        )
       }
     }
 
