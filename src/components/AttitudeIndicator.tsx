@@ -149,6 +149,15 @@ export default function AttitudeIndicator() {
         <span>Bank {roll >= 0 ? '+' : ''}{roll.toFixed(0)}&deg;</span>
       </div>
 
+      {/* Temporary diagnostic while tracking down the calibration issue —
+          shows the unprocessed sensor values and the captured offset
+          directly, so it's possible to see whether the raw values
+          themselves are unstable versus a bug in the offset math. */}
+      <div className="attitude-debug">
+        raw beta/gamma {rawPitch.toFixed(1)}&deg; / {rawRoll.toFixed(1)}&deg; · offset{' '}
+        {offset.pitch.toFixed(1)}&deg; / {offset.roll.toFixed(1)}&deg; · samples {recentRef.current.length}
+      </div>
+
       <div className="attitude-controls">
         <button type="button" className="fill-btn attitude-level-btn" onClick={handleLevel}>
           Level / center here
