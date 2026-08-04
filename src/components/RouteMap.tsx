@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import L from 'leaflet'
 import type { Waypoint } from '../lib/planning'
 import { destinationPoint } from '../lib/geo'
@@ -101,14 +101,14 @@ export default function RouteMap({
   const onToggleFullscreenRef = useRef(onToggleFullscreen)
   onToggleFullscreenRef.current = onToggleFullscreen
   const followBtnRef = useRef<HTMLButtonElement | null>(null)
-  const trackUpBtnRef = useRef<HTMLButtonElement | null>(null)
   const wasFollowingRef = useRef(false)
 
-  // "Follow me" (re-center on GPS position) and "track-up" (rotate the map
-  // to align with the direction of travel) are view-only preferences, kept
-  // local to the map rather than lifted to App state.
+  // "Follow me" (re-center on GPS position) and manual map rotation (via
+  // the on-map rotate knob) are view-only preferences, kept local to the
+  // map rather than lifted to App state. rotationDeg is the direction
+  // currently pointing "up" on screen — 0 means north-up.
   const [follow, setFollow] = useState(false)
-  const [trackUp, setTrackUp] = useState(false)
+  const [rotationDeg, setRotationDeg] = useState(0)
 
   // Create the map once.
   useEffect(() => {
@@ -176,27 +176,12 @@ export default function RouteMap({
     })
     new FollowControl({ position: 'topleft' }).addTo(map)
 
-    // Track-up — rotates the map so the direction of travel points up.
-    const TrackUpControl = L.Control.extend({
-      onAdd: function () {
-        const btn = L.DomUtil.create('button', 'map-trackup-btn')
-        btn.type = 'button'
-        btn.innerHTML = '&#8593;'
-        btn.title = 'Rotate map to track-up'
-        L.DomEvent.disableClickPropagation(btn)
-        btn.onclick = () => setTrackUp((t) => !t)
-        trackUpBtnRef.current = btn
-        return btn
-      }
-    })
-    new TrackUpControl({ position: 'topleft' }).addTo(map)
-
     // Manually panning the map means the pilot wants to look elsewhere —
     // drop out of follow mode rather than keep fighting their drag on the
     // next GPS update, matching how phone nav apps behave.
     map.on('dragstart', () => setFollow(false))
 
-    // Track-up mode grows and re-centers the actual Leaflet container well
+    // Rotating grows and re-centers the actual Leaflet container well
     // beyond the visible frame (see the sizing effect below), which would
     // otherwise carry Leaflet's own control buttons — anchored to that
     // container's corners — off-screen with it. Move the control layer out
@@ -433,31 +418,30 @@ export default function RouteMap({
     followBtnRef.current?.classList.toggle('active', follow)
   }, [follow])
 
-  useEffect(() => {
-    trackUpBtnRef.current?.classList.toggle('active', trackUp)
-  }, [trackUp])
-
-  // Rotates the whole map so the current track points up, by CSS-rotating
+  // Rotates the whole map to the manually-chosen direction, by CSS-rotating
   // the container itself — tiles and markers (including the live plane
-  // icon) all turn together. This is a lightweight approach rather than a
+  // icon) all turn together. Driven entirely by the rotate knob below, not
+  // by live heading — continuously re-rotating on every (often noisy) GPS
+  // heading update was choppy on real devices, so rotation only changes on
+  // deliberate input now. This is a lightweight approach rather than a
   // rotation-aware tile renderer, so dragging/clicking position while
   // rotated will feel offset (best used together with Follow, not while
   // editing the route).
   useEffect(() => {
-    const heading = trackUp ? livePosition?.headingDeg : undefined
     if (containerRef.current) {
-      containerRef.current.style.transform = heading ? `rotate(${-heading}deg)` : ''
+      containerRef.current.style.transform = rotationDeg ? `rotate(${-rotationDeg}deg)` : ''
     }
-  }, [trackUp, livePosition?.headingDeg])
+  }, [rotationDeg])
 
   // Leaflet only ever loads tiles to cover its own (unrotated) container
   // size — rotating that container via CSS then visibly exposes the
   // square edge of loaded tiles near the frame's corners, since the
   // rotated square's bounding box is bigger than the square itself. Fix:
-  // while rotating, grow the actual Leaflet container to the wrapper's
+  // while rotated, grow the actual Leaflet container to the wrapper's
   // diagonal (so it's guaranteed to cover the frame at any rotation
   // angle) and center it, then let Leaflet re-measure and load tiles for
-  // that larger area. Reverts to filling the wrapper exactly when off.
+  // that larger area. Reverts to filling the wrapper exactly at 0°.
+  const isRotated = rotationDeg !== 0
   useEffect(() => {
     const wrap = wrapRef.current
     const container = containerRef.current
@@ -465,7 +449,7 @@ export default function RouteMap({
 
     function applySizing() {
       if (!wrap || !container) return
-      if (trackUp) {
+      if (isRotated) {
         const { width, height } = wrap.getBoundingClientRect()
         const diagonal = Math.ceil(Math.sqrt(width * width + height * height))
         container.style.position = 'absolute'
@@ -484,12 +468,12 @@ export default function RouteMap({
     }
 
     applySizing()
-    if (!trackUp) return
+    if (!isRotated) return
     // Re-measure on device rotation/resize while active, since the
     // diagonal depends on the wrapper's current size.
     window.addEventListener('resize', applySizing)
     return () => window.removeEventListener('resize', applySizing)
-  }, [trackUp, fullscreen])
+  }, [isRotated, fullscreen])
 
   // Leaflet measures its container at creation/update time. If that
   // container was display:none (e.g. its section wasn't the open one),
@@ -537,6 +521,67 @@ export default function RouteMap({
           )}
         </div>
       )}
+      <RotateKnob rotationDeg={rotationDeg} onChange={setRotationDeg} />
+    </div>
+  )
+}
+
+// A small draggable compass dial for manually rotating the map — kept off
+// the map surface entirely (rather than a two-finger twist gesture on the
+// map itself) so it never competes with Leaflet's own two-finger
+// pinch-to-zoom. Drag anywhere around the dial; the angle from its center
+// to the pointer becomes the new rotation directly. Double-click/tap
+// resets to north-up.
+function RotateKnob({
+  rotationDeg,
+  onChange
+}: {
+  rotationDeg: number
+  onChange: (deg: number) => void
+}) {
+  const knobRef = useRef<HTMLDivElement | null>(null)
+  const draggingRef = useRef(false)
+
+  function angleFromPointer(e: { clientX: number; clientY: number }): number {
+    const el = knobRef.current
+    if (!el) return rotationDeg
+    const rect = el.getBoundingClientRect()
+    const dx = e.clientX - (rect.left + rect.width / 2)
+    const dy = e.clientY - (rect.top + rect.height / 2)
+    const deg = Math.atan2(dx, -dy) * (180 / Math.PI)
+    return deg < 0 ? deg + 360 : deg
+  }
+
+  function handlePointerDown(e: ReactPointerEvent) {
+    draggingRef.current = true
+    e.currentTarget.setPointerCapture(e.pointerId)
+    onChange(angleFromPointer(e))
+  }
+
+  function handlePointerMove(e: ReactPointerEvent) {
+    if (!draggingRef.current) return
+    onChange(angleFromPointer(e))
+  }
+
+  function handlePointerUp(e: ReactPointerEvent) {
+    draggingRef.current = false
+    e.currentTarget.releasePointerCapture(e.pointerId)
+  }
+
+  return (
+    <div
+      ref={knobRef}
+      className={rotationDeg ? 'map-rotate-knob active' : 'map-rotate-knob'}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onDoubleClick={() => onChange(0)}
+      title="Drag to rotate the map · double-click to reset to north-up"
+    >
+      <div className="map-rotate-knob-needle" style={{ transform: `rotate(${rotationDeg}deg)` }} />
+      <span className="map-rotate-knob-n" style={{ transform: `rotate(${rotationDeg}deg)` }}>
+        N
+      </span>
     </div>
   )
 }

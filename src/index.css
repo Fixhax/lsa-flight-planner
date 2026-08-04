@@ -1496,6 +1496,50 @@ button:focus-visible {
   color: rgba(255, 255, 255, 0.6);
 }
 
+.map-rotate-knob {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 600;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(13, 17, 23, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  touch-action: none; /* this element owns pointer drags — don't let the browser also scroll/zoom on it */
+  cursor: grab;
+}
+
+.map-rotate-knob.active {
+  border-color: var(--cyan);
+}
+
+.map-rotate-knob-needle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 16px;
+  margin-left: -1px;
+  margin-top: -16px;
+  transform-origin: 50% 16px;
+  background: var(--cyan);
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.map-rotate-knob-n {
+  position: absolute;
+  left: 50%;
+  top: 3px;
+  margin-left: -4px;
+  transform-origin: 50% 19px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: #fff;
+  pointer-events: none;
+}
+
 /* ---------- fullscreen timer action bar ---------- */
 
 .timer-action-bar {
