@@ -112,7 +112,8 @@ const HELP_GROUPS: HelpGroup[] = [
     title: 'METAR / TAF',
     paragraphs: [
       "The real, official published aviation reports (Aviation Weather Center's free public data) for your departure and destination — shown as raw, undecoded text on purpose, so nothing gets lost or misread in translation. Fetched only when you tap the button, not automatically.",
-      "Only exists for whichever of your departure/destination carries a known ICAO identifier — most of this app's curated grass/gravel strips are uncontrolled and don't have one, so this often has nothing to show for them. This is still not a substitute for a full pre-flight briefing (SIGMET/NOTAM/AIRMET aren't included) — see \"Weather report\" above for the general forecast model instead, which is a different thing entirely."
+      "When a waypoint has its own ICAO identifier, that airport's own METAR/TAF is shown. When it doesn't — most of this app's curated grass/gravel strips are uncontrolled and don't have one — this instead looks up the nearest currently-reporting station and shows that, clearly labeled with its distance and \"not the field itself\". A station a few nm away can still have meaningfully different wind, cloud, or visibility than the actual strip, especially near terrain or coastline — use it as context, not as if it were measured at the field.",
+      "This is still not a substitute for a full pre-flight briefing (SIGMET/NOTAM/AIRMET aren't included) — see \"Weather report\" above for the general forecast model instead, which is a different thing entirely."
     ]
   },
   {

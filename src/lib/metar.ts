@@ -1,7 +1,55 @@
+import { distanceNm } from './geo'
+
 export interface MetarTafResult {
   icao: string
   metar: string | null
   taf: string | null
+}
+
+export interface NearestStation {
+  icao: string
+  distanceNm: number
+}
+
+interface AwcMetarRecord {
+  icaoId?: string
+  lat?: number
+  lon?: number
+}
+
+async function queryStationsInBox(lat: number, lon: number, latPadDeg: number): Promise<AwcMetarRecord[]> {
+  // Longitude degrees cover less real distance the further from the
+  // equator you are — widened to roughly match latPadDeg's real distance
+  // rather than using a fixed-degree square, which would be a much
+  // narrower box east-west than north-south this far north.
+  const lonPadDeg = latPadDeg / Math.max(0.2, Math.cos((lat * Math.PI) / 180))
+  const bbox = `${lat - latPadDeg},${lon - lonPadDeg},${lat + latPadDeg},${lon + lonPadDeg}`
+  const res = await fetch(`https://aviationweather.gov/api/data/metar?bbox=${bbox}&format=json`, {
+    signal: AbortSignal.timeout(10000)
+  })
+  if (!res.ok) throw new Error(`Aviation Weather Center returned ${res.status}`)
+  return (await res.json()) as AwcMetarRecord[]
+}
+
+// Nearest currently-reporting METAR station to a point — used to fall
+// back to when a waypoint has no ICAO identifier of its own (most curated
+// grass/gravel strips don't). Widens the search box in steps rather than
+// one big query, since most of the time a station is close by and a huge
+// box would be wasted work. The result is always labeled with its
+// distance in the UI — it's weather AT that station, not necessarily
+// representative of conditions at the actual waypoint.
+export async function fetchNearestStation(lat: number, lon: number): Promise<NearestStation | null> {
+  for (const latPadDeg of [1.5, 3, 6]) {
+    const stations = await queryStationsInBox(lat, lon, latPadDeg)
+    let best: NearestStation | null = null
+    for (const s of stations) {
+      if (!s.icaoId || s.lat === undefined || s.lon === undefined) continue
+      const d = distanceNm({ lat, lon }, { lat: s.lat, lon: s.lon })
+      if (!best || d < best.distanceNm) best = { icao: s.icaoId, distanceNm: d }
+    }
+    if (best) return best
+  }
+  return null
 }
 
 async function fetchRaw(kind: 'metar' | 'taf', icao: string): Promise<string | null> {
