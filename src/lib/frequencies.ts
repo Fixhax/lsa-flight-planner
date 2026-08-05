@@ -19,18 +19,10 @@ export const REFERENCE_FREQUENCIES: ReferenceFrequency[] = [
     source: 'published'
   },
   {
-    label: 'Common / uncontrolled areas',
-    mhz: 123.5,
-    scope: 'Norway',
-    note:
-      'Widely used by convention in Norwegian uncontrolled airspace and near uncontrolled aerodromes for blind position calls, per multiple independent sources checked \u2014 not an officially assigned CTAF-style frequency for every field. A user of this app has flagged that its continued currency may be questionable; I found nothing either confirming or contradicting that, so verify against the current AIP before relying on it.',
-    source: 'published'
-  },
-  {
     label: 'Search and rescue (SAR)',
     mhz: 123.1,
     scope: 'Norway',
-    note: 'Norwegian SAR frequency.',
+    note: 'Norwegian SAR frequency, continued on the old 25 kHz channel (not affected by the 8.33 kHz changeover).',
     source: 'published'
   },
   {
@@ -41,11 +33,11 @@ export const REFERENCE_FREQUENCIES: ReferenceFrequency[] = [
     source: 'published'
   },
   {
-    label: 'Class G (uncontrolled) airspace',
+    label: 'Common / uncontrolled areas (Enroute, blind calls)',
     mhz: 123.065,
     scope: 'Norway',
     note:
-      'Confirmed directly by a user of this app as the frequency for Class G airspace in Norway (corrects an earlier, mistaken 123.650 reported here). Not independently found in a published source by me, but fits the expected 8.33 kHz channel pattern and the user has confirmed it.',
+      'The new common European "Enroute"/blind-call frequency for uncontrolled airspace, replacing the old 123.500 \u2014 confirmed directly by a user of this app, who also flagged that 123.500 is no longer current and shouldn\u2019t be used (that entry has been removed here accordingly). This is the same frequency previously listed here for Class G airspace specifically; also corrects an earlier, mistaken 123.650 reported at one point. Not independently found in a published source by me, but fits the expected 8.33 kHz channel pattern and the user has confirmed it.',
     source: 'user-confirmed'
   }
 ]
