@@ -8,6 +8,8 @@ export const ctsw: AircraftProfile = {
   id: 'flight-design-ctsw',
   displayName: 'CTSW',
   manufacturer: 'Flight Design',
+  category: 'airplane',
+  fuelType: 'avgas',
 
   cruiseTasKt: 112, // POH: cruise speed at 75% power, 600kg gross
   fuelBurnLph: 18.9, // ~5 US gal/h at cruise power

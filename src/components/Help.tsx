@@ -5,6 +5,14 @@ interface HelpGroup {
 
 const HELP_GROUPS: HelpGroup[] = [
   {
+    title: 'Aircraft',
+    paragraphs: [
+      "The Airplanes/Helicopters tabs filter the picker to that category — switching aircraft resets cruise speed, reserve, and MTOW to that aircraft's defaults, and fuel on board to full tanks. Weight & balance uses the correct fuel density automatically (avgas ~0.72kg/L vs Jet A ~0.8kg/L) based on the selected aircraft's fuel type.",
+      "For Jet A aircraft, the \"Burn\" figure can be shown in kg/h instead of L/h (small selector next to it) — Jet A is usually measured by weight, not volume, in real operations. Avgas aircraft always just show L/h.",
+      "Helicopters currently have no engine-out glide range shown — autorotation doesn't behave like a fixed-wing glide, so this app doesn't model it, rather than showing a fabricated \"glide circle\" that wouldn't reflect real performance."
+    ]
+  },
+  {
     title: 'Cruise settings',
     paragraphs: [
       "Cruise speed defaults to your selected aircraft's published figure — lower it for a fuel-saving cruise or a short-field configuration. Altitude is recorded for your nav log but doesn't yet adjust true airspeed or fuel burn for density altitude."
@@ -73,7 +81,7 @@ const HELP_GROUPS: HelpGroup[] = [
   {
     title: 'Payload & weight',
     paragraphs: [
-      "Fuel weight uses an approximate avgas density of 0.72 kg/L. This is a takeoff-weight check only — it doesn't verify CG position within limits."
+      "Fuel weight uses an approximate density for the selected aircraft's fuel type — 0.72 kg/L for avgas, 0.8 kg/L for Jet A. This is a takeoff-weight check only — it doesn't verify CG position within limits."
     ]
   },
   {

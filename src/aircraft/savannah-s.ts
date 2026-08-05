@@ -9,6 +9,8 @@ export const savannahS: AircraftProfile = {
   id: 'icp-savannah-s',
   displayName: 'Savannah S',
   manufacturer: 'ICP Aviazione',
+  category: 'airplane',
+  fuelType: 'avgas',
 
   cruiseTasKt: 97, // 179 km/h at 75% power
   fuelBurnLph: 18.5, // consumption at 75% power

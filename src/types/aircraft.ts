@@ -1,10 +1,15 @@
 // Every supported aircraft implements this shape. Add a new file in
 // src/aircraft/ and register it in src/aircraft/registry.ts to support
-// another light sport aircraft type — nothing else in the app needs to change.
+// another aircraft type — nothing else in the app needs to change.
+export type AircraftCategory = 'airplane' | 'helicopter'
+export type FuelType = 'avgas' | 'jetA'
+
 export interface AircraftProfile {
   id: string
   displayName: string
   manufacturer: string
+  category: AircraftCategory
+  fuelType: FuelType // determines which fuel density is used for weight & balance
 
   // Performance
   cruiseTasKt: number // true airspeed at typical cruise power, knots
@@ -21,9 +26,13 @@ export interface AircraftProfile {
   extendedFuelCapacityL?: number
   extendedUnusableFuelL?: number
 
-  // Engine-out glide performance
-  glideRatio: number // best L/D, e.g. 11 for 11:1
-  bestGlideSpeedKt: number
+  // Engine-out glide performance. Left undefined for aircraft where a
+  // simple L/D glide-ratio circle wouldn't represent real emergency
+  // performance (e.g. helicopter autorotation, which doesn't behave like a
+  // fixed-wing glide) — the glide-range feature is hidden entirely rather
+  // than showing a fabricated number for those.
+  glideRatio?: number // best L/D, e.g. 11 for 11:1
+  bestGlideSpeedKt?: number
   bestGlideSpeedIsEstimate?: boolean // true when derived (e.g. ~1.3x Vso) rather than a published POH figure
 
   // Weight (for the weight & balance module, coming later)

@@ -14,6 +14,7 @@ export interface PersistedPlan {
   cruiseAltitudeFt?: number
   speedUnit?: string
   windSpeedUnit?: string
+  fuelBurnUnit?: string
   extendedTanks?: boolean
   fuelOnBoardL?: number
   reserveMinutes?: number

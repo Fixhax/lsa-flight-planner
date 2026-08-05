@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { aircraftRegistry, getAircraftById } from './aircraft/registry'
+import type { AircraftCategory } from './types/aircraft'
 import { formatMinutes, planRoute, MIN_RESERVE_MINUTES, type Waypoint } from './lib/planning'
 import type { Wind } from './lib/wind'
 import FuelGauge from './components/FuelGauge'
@@ -8,8 +9,16 @@ import StripSearch from './components/StripSearch'
 import WeightSummary from './components/WeightSummary'
 import RouteMap from './components/RouteMap'
 import { airstrips, type AirstripEntry } from './data/strips'
-import { ktToUnit, unitToKt, speedUnitLabel, type SpeedUnit } from './lib/units'
-import { computeWeight } from './lib/weight'
+import {
+  ktToUnit,
+  unitToKt,
+  speedUnitLabel,
+  fuelBurnUnitLabel,
+  lphToFuelBurnUnit,
+  type SpeedUnit,
+  type FuelBurnUnit
+} from './lib/units'
+import { computeWeight, FUEL_DENSITY_KG_PER_L } from './lib/weight'
 import { computeGlide } from './lib/glide'
 import GlideSummary from './components/GlideSummary'
 import WeatherFetch from './components/WeatherFetch'
@@ -123,6 +132,11 @@ export default function App() {
   const [windSpeedUnit, setWindSpeedUnit] = useState<SpeedUnit>(
     (persisted?.windSpeedUnit as SpeedUnit) ?? 'kt'
   )
+  // Only shown/relevant for Jet A aircraft (kg/h is the more usual figure
+  // there) — avgas aircraft always just show L/h regardless of this.
+  const [fuelBurnUnit, setFuelBurnUnit] = useState<FuelBurnUnit>(
+    (persisted?.fuelBurnUnit as FuelBurnUnit) ?? 'lph'
+  )
   const [extendedTanks, setExtendedTanks] = useState(persisted?.extendedTanks ?? false)
   const [fuelOnBoardL, setFuelOnBoardL] = useState(
     persisted?.fuelOnBoardL ?? aircraftRegistry[0].fuelCapacityL - aircraftRegistry[0].unusableFuelL
@@ -152,6 +166,7 @@ export default function App() {
       if (cloud.cruiseAltitudeFt !== undefined) setCruiseAltitudeFt(cloud.cruiseAltitudeFt)
       if (cloud.speedUnit) setSpeedUnit(cloud.speedUnit as SpeedUnit)
       if (cloud.windSpeedUnit) setWindSpeedUnit(cloud.windSpeedUnit as SpeedUnit)
+      if (cloud.fuelBurnUnit) setFuelBurnUnit(cloud.fuelBurnUnit as FuelBurnUnit)
       if (cloud.extendedTanks !== undefined) setExtendedTanks(cloud.extendedTanks)
       if (cloud.fuelOnBoardL !== undefined) setFuelOnBoardL(cloud.fuelOnBoardL)
       if (cloud.reserveMinutes !== undefined) setReserveMinutes(cloud.reserveMinutes)
@@ -181,6 +196,7 @@ export default function App() {
       cruiseAltitudeFt,
       speedUnit,
       windSpeedUnit,
+      fuelBurnUnit,
       extendedTanks,
       fuelOnBoardL,
       reserveMinutes,
@@ -206,6 +222,7 @@ export default function App() {
     cruiseAltitudeFt,
     speedUnit,
     windSpeedUnit,
+    fuelBurnUnit,
     extendedTanks,
     fuelOnBoardL,
     reserveMinutes,
@@ -219,6 +236,13 @@ export default function App() {
   const [liveStatus, setLiveStatus] = useState<string | null>(null)
   const [timerStatus, setTimerStatus] = useState<string | null>(null)
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['aircraft']))
+  // Which category tab is showing in the Aircraft panel's picker — synced
+  // to match whenever the actually-selected aircraft's category changes
+  // (e.g. picked from the header dropdown), but otherwise left alone so
+  // browsing the other tab doesn't fight the user.
+  const [aircraftCategoryTab, setAircraftCategoryTab] = useState<AircraftCategory>(
+    (getAircraftById(persisted?.aircraftId ?? aircraftRegistry[0].id) ?? aircraftRegistry[0]).category
+  )
   const [isMapFullscreen, setIsMapFullscreen] = useState(false)
 
   // Guaranteed fallback exit — regardless of what else might go wrong with
@@ -295,6 +319,10 @@ export default function App() {
 
   const aircraft = getAircraftById(aircraftId) ?? aircraftRegistry[0]
 
+  useEffect(() => {
+    setAircraftCategoryTab(aircraft.category)
+  }, [aircraft.category])
+
   const usableFuelL = useMemo(() => {
     if (extendedTanks && aircraft.extendedFuelCapacityL !== undefined) {
       return aircraft.extendedFuelCapacityL - (aircraft.extendedUnusableFuelL ?? aircraft.unusableFuelL)
@@ -368,13 +396,20 @@ export default function App() {
         pilotKg,
         passengerKg,
         luggageKg,
-        mtowKg
+        mtowKg,
+        aircraft.fuelType
       ),
-    [aircraft.emptyWeightKg, fuelOnBoardL, pilotKg, passengerKg, luggageKg, mtowKg]
+    [aircraft.emptyWeightKg, fuelOnBoardL, pilotKg, passengerKg, luggageKg, mtowKg, aircraft.fuelType]
   )
 
+  // undefined for aircraft with no published glideRatio/bestGlideSpeedKt
+  // (e.g. helicopters — see the note on those fields in types/aircraft.ts)
+  // rather than showing a fabricated engine-out glide circle.
   const glide = useMemo(
-    () => computeGlide(cruiseAltitudeFt, aircraft.glideRatio, aircraft.bestGlideSpeedKt, wind),
+    () =>
+      aircraft.glideRatio !== undefined && aircraft.bestGlideSpeedKt !== undefined
+        ? computeGlide(cruiseAltitudeFt, aircraft.glideRatio, aircraft.bestGlideSpeedKt, wind)
+        : undefined,
     [cruiseAltitudeFt, aircraft.glideRatio, aircraft.bestGlideSpeedKt, wind]
   )
 
@@ -386,12 +421,14 @@ export default function App() {
   // planned altitude regardless.
   const liveGlide = useMemo(
     () =>
-      computeGlide(
-        livePosition?.altitudeFt ?? cruiseAltitudeFt,
-        aircraft.glideRatio,
-        aircraft.bestGlideSpeedKt,
-        wind
-      ),
+      aircraft.glideRatio !== undefined && aircraft.bestGlideSpeedKt !== undefined
+        ? computeGlide(
+            livePosition?.altitudeFt ?? cruiseAltitudeFt,
+            aircraft.glideRatio,
+            aircraft.bestGlideSpeedKt,
+            wind
+          )
+        : undefined,
     [livePosition?.altitudeFt, cruiseAltitudeFt, aircraft.glideRatio, aircraft.bestGlideSpeedKt, wind]
   )
 
@@ -477,11 +514,24 @@ export default function App() {
             value={aircraftId}
             onChange={(e) => setAircraftId(e.target.value)}
           >
-            {aircraftRegistry.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.displayName}
-              </option>
-            ))}
+            <optgroup label="Airplanes">
+              {aircraftRegistry
+                .filter((a) => a.category === 'airplane')
+                .map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.displayName}
+                  </option>
+                ))}
+            </optgroup>
+            <optgroup label="Helicopters">
+              {aircraftRegistry
+                .filter((a) => a.category === 'helicopter')
+                .map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.displayName}
+                  </option>
+                ))}
+            </optgroup>
           </select>
         </div>
       </header>
@@ -515,6 +565,35 @@ export default function App() {
 
       <section className="panel" style={{ display: openSections.has('aircraft') ? undefined : 'none' }}>
         <p className="panel-label">Aircraft</p>
+        <div className="aircraft-type-tabs">
+          {(['airplane', 'helicopter'] as const).map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              className={aircraftCategoryTab === cat ? 'aircraft-type-tab active' : 'aircraft-type-tab'}
+              onClick={() => setAircraftCategoryTab(cat)}
+            >
+              {cat === 'airplane' ? 'Airplanes' : 'Helicopters'}
+            </button>
+          ))}
+        </div>
+        <div className="aircraft-picker-list">
+          {aircraftRegistry.filter((a) => a.category === aircraftCategoryTab).map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              className={a.id === aircraftId ? 'aircraft-picker-btn active' : 'aircraft-picker-btn'}
+              onClick={() => setAircraftId(a.id)}
+            >
+              {a.displayName}
+            </button>
+          ))}
+          {aircraftRegistry.filter((a) => a.category === aircraftCategoryTab).length === 0 && (
+            <p className="empty-hint">
+              No {aircraftCategoryTab === 'airplane' ? 'airplanes' : 'helicopters'} registered yet.
+            </p>
+          )}
+        </div>
         <div className="aircraft-summary">
           <span>
             Default cruise{' '}
@@ -523,7 +602,26 @@ export default function App() {
             </strong>
           </span>
           <span>
-            Burn <strong>{aircraft.fuelBurnLph} L/h</strong>
+            Burn{' '}
+            <strong>
+              {lphToFuelBurnUnit(
+                aircraft.fuelBurnLph,
+                aircraft.fuelType === 'jetA' ? fuelBurnUnit : 'lph',
+                FUEL_DENSITY_KG_PER_L[aircraft.fuelType]
+              ).toFixed(1)}{' '}
+              {fuelBurnUnitLabel[aircraft.fuelType === 'jetA' ? fuelBurnUnit : 'lph']}
+            </strong>
+            {aircraft.fuelType === 'jetA' && (
+              <select
+                className="fuel-burn-unit-select"
+                value={fuelBurnUnit}
+                onChange={(e) => setFuelBurnUnit(e.target.value as FuelBurnUnit)}
+                aria-label="Fuel burn unit"
+              >
+                <option value="lph">L/h</option>
+                <option value="kgph">kg/h</option>
+              </select>
+            )}
           </span>
           <span>
             Usable fuel <strong>{usableFuelL.toFixed(0)} L</strong>
@@ -619,7 +717,14 @@ export default function App() {
 
       <section className="panel" style={{ display: openSections.has('glide') ? undefined : 'none' }}>
         <p className="panel-label">Glide range (engine-out)</p>
-        <GlideSummary glide={glide} altitudeFt={cruiseAltitudeFt} />
+        {glide ? (
+          <GlideSummary glide={glide} altitudeFt={cruiseAltitudeFt} />
+        ) : (
+          <p className="empty-hint">
+            No published glide-ratio figure for {aircraft.displayName} — a fixed-wing L/D glide
+            circle wouldn't represent {aircraft.category === 'helicopter' ? 'autorotation' : 'this aircraft’s'} performance, so it's not shown rather than guessed at.
+          </p>
+        )}
       </section>
 
       <section

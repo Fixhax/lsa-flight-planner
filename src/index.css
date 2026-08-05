@@ -1008,6 +1008,65 @@ button:focus-visible {
   font-weight: 600;
 }
 
+.aircraft-type-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.aircraft-type-tab {
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: var(--text-muted);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.aircraft-type-tab.active {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.aircraft-picker-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.aircraft-picker-btn {
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.aircraft-picker-btn:hover {
+  border-color: var(--cyan);
+}
+
+.aircraft-picker-btn.active {
+  background: var(--cyan);
+  border-color: var(--cyan);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+.fuel-burn-unit-select {
+  margin-left: 6px;
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
 .footnote {
   font-size: 0.72rem;
   color: var(--text-muted);

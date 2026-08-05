@@ -10,6 +10,8 @@ export const ransS6: AircraftProfile = {
   id: 'rans-s6',
   displayName: 'RANS S-6 Coyote II',
   manufacturer: 'RANS Aircraft',
+  category: 'airplane',
+  fuelType: 'avgas',
 
   cruiseTasKt: 95, // RANS' published cruise for the 912ULS-equipped S-6
   fuelBurnLph: 18.9, // ~5 US gal/h at that cruise setting

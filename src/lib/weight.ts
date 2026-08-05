@@ -1,7 +1,13 @@
-// Avgas (100LL) is commonly figured at ~0.72 kg per litre at standard
-// temperature. Actual density varies a little with fuel temperature, so
-// treat this as a planning approximation, not a precision figure.
-export const FUEL_DENSITY_KG_PER_L = 0.72
+import type { FuelType } from '../types/aircraft'
+
+// Avgas (100LL) is commonly figured at ~0.72 kg per litre, Jet A/A-1 at
+// ~0.8 kg per litre, both at standard temperature. Actual density varies a
+// little with fuel temperature, so treat these as planning approximations,
+// not precision figures.
+export const FUEL_DENSITY_KG_PER_L: Record<FuelType, number> = {
+  avgas: 0.72,
+  jetA: 0.8
+}
 
 export interface WeightBreakdown {
   emptyWeightKg: number
@@ -21,9 +27,10 @@ export function computeWeight(
   pilotKg: number,
   passengerKg: number,
   luggageKg: number,
-  mtowKg: number
+  mtowKg: number,
+  fuelType: FuelType = 'avgas'
 ): WeightBreakdown {
-  const fuelWeightKg = fuelOnBoardL * FUEL_DENSITY_KG_PER_L
+  const fuelWeightKg = fuelOnBoardL * FUEL_DENSITY_KG_PER_L[fuelType]
   const totalWeightKg = emptyWeightKg + fuelWeightKg + pilotKg + passengerKg + luggageKg
   const overweightByKg = totalWeightKg - mtowKg
 

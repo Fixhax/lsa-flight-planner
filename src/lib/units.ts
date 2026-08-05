@@ -24,3 +24,19 @@ export function ktToUnit(kt: number, unit: SpeedUnit): number {
 export function unitToKt(value: number, unit: SpeedUnit): number {
   return value / UNITS_PER_KT[unit]
 }
+
+// Fuel burn rate is always stored internally as litres/hour (see
+// AircraftProfile.fuelBurnLph) — this only affects display. Only relevant
+// for Jet A aircraft in practice, where kg/h is the more usual figure;
+// avgas aircraft just show L/h.
+export type FuelBurnUnit = 'lph' | 'kgph'
+
+export const fuelBurnUnitLabel: Record<FuelBurnUnit, string> = {
+  lph: 'L/h',
+  kgph: 'kg/h'
+}
+
+/** Converts a burn rate stored in L/h to the given display unit, using the aircraft's fuel density. */
+export function lphToFuelBurnUnit(lph: number, unit: FuelBurnUnit, densityKgPerL: number): number {
+  return unit === 'kgph' ? lph * densityKgPerL : lph
+}
