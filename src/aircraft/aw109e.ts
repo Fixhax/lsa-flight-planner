@@ -22,8 +22,13 @@ export const aw109e: AircraftProfile = {
   unusableFuelL: 0, // not independently confirmed — treated as included in the 800L figure above
   reserveMinutes: 30, // generic planning default — adjust to your operator's actual reserve rule
 
-  emptyWeightKg: 1939, // "Basic Operating Weight" per source, which may include crew/standard equipment beyond a pure empty weight
-  maxTakeoffWeightKg: 2850, // internal-load MTOW (multiple sources); 3,000kg with an external sling load
+  emptyWeightKg: 1939, // "Basic Operating Weight" per source, which may include crew/standard equipment beyond a pure empty weight — override this in the app to match your actual aircraft's weighed empty weight
+  maxTakeoffWeightKg: 2850,
+  mtowCategoriesKg: [
+    { weightKg: 2850, label: '2,850 kg (standard, internal load)' },
+    { weightKg: 2750, label: '2,750 kg (HEC — per user, not independently verified)' },
+    { weightKg: 3000, label: '3,000 kg (external sling load)' }
+  ],
 
   // No glideRatio/bestGlideSpeedKt: engine-out for a helicopter means
   // entering autorotation, which doesn't behave like a fixed-wing glide —

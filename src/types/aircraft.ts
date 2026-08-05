@@ -4,6 +4,11 @@
 export type AircraftCategory = 'airplane' | 'helicopter'
 export type FuelType = 'avgas' | 'jetA'
 
+export interface MtowCategory {
+  weightKg: number
+  label?: string // shown in the picker when there's something to distinguish it beyond the raw kg value (e.g. "microlight" vs "LSA", or a named operating limitation)
+}
+
 export interface AircraftProfile {
   id: string
   displayName: string
@@ -35,9 +40,15 @@ export interface AircraftProfile {
   bestGlideSpeedKt?: number
   bestGlideSpeedIsEstimate?: boolean // true when derived (e.g. ~1.3x Vso) rather than a published POH figure
 
-  // Weight (for the weight & balance module, coming later)
+  // Weight (for the weight & balance module). emptyWeightKg is a default —
+  // the UI lets you override it, since a real aircraft's equipped empty
+  // weight often differs from the registry figure. maxTakeoffWeightKg is
+  // the default/first MTOW category; mtowCategoriesKg lists the selectable
+  // options shown in the picker, falling back to just [maxTakeoffWeightKg]
+  // when an aircraft doesn't have documented alternates.
   emptyWeightKg: number
   maxTakeoffWeightKg: number
+  mtowCategoriesKg?: MtowCategory[]
 
   notes?: string
 }

@@ -172,6 +172,61 @@ button:focus-visible {
   font-size: 1rem;
 }
 
+/* Weight/altitude/speed/quantity fields — tap +/- to bump the value
+   instead of clearing and retyping it. Styled as one cohesive control
+   (border/background on the wrapper) rather than three separate ones. */
+.number-stepper {
+  display: flex;
+  align-items: stretch;
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.number-stepper input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 10px 4px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--text);
+  /* hide the native spinner — the +/- buttons replace it */
+  -moz-appearance: textfield;
+}
+
+.number-stepper input::-webkit-outer-spin-button,
+.number-stepper input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.number-stepper-btn {
+  width: 40px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border: none;
+  color: var(--cyan);
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+.number-stepper-btn:hover {
+  background: var(--border);
+}
+
+.number-stepper-btn:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
 /* ---------- waypoints ---------- */
 
 .waypoint-list {

@@ -31,7 +31,11 @@ export const savannahS: AircraftProfile = {
   bestGlideSpeedKt: 55, // 63 mph per POH, converted to knots
 
   emptyWeightKg: 286,
-  maxTakeoffWeightKg: 450, // set to 600 if registered under a 600kg category
+  maxTakeoffWeightKg: 450,
+  mtowCategoriesKg: [
+    { weightKg: 450, label: '450 kg (microlight)' },
+    { weightKg: 600, label: '600 kg (LSA/ultralight)' }
+  ],
 
   notes:
     'Standard-tank Rotax 912 ULS configuration. Verify all figures against your aircraft\u2019s POH — extended tanks, 80hp engine variant, and MTOW category all change these numbers.'

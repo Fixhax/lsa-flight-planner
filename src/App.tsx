@@ -8,6 +8,7 @@ import NavLogView from './components/NavLog'
 import StripSearch from './components/StripSearch'
 import WeightSummary from './components/WeightSummary'
 import RouteMap from './components/RouteMap'
+import NumberStepper from './components/NumberStepper'
 import { airstrips, type AirstripEntry } from './data/strips'
 import {
   ktToUnit,
@@ -71,8 +72,6 @@ const SPEED_UNIT_OPTIONS: { value: SpeedUnit; label: string }[] = [
   { value: 'kmh', label: 'km/h' },
   { value: 'ms', label: 'm/s' }
 ]
-
-const MTOW_OPTIONS_KG = [450, 560, 600]
 
 // Grouped by when you'd actually reach for each one, not by topic —
 // pre-flight planning happens on the ground with time to think; in-flight
@@ -154,6 +153,11 @@ export default function App() {
   const [passengerKg, setPassengerKg] = useState(persisted?.passengerKg ?? 0)
   const [luggageKg, setLuggageKg] = useState(persisted?.luggageKg ?? 0)
   const [mtowKg, setMtowKg] = useState(persisted?.mtowKg ?? aircraftRegistry[0].maxTakeoffWeightKg)
+  // Overridable — a real aircraft's equipped empty weight (avionics,
+  // interior, etc.) often differs from the registry's published figure.
+  const [emptyWeightKg, setEmptyWeightKg] = useState(
+    persisted?.emptyWeightKg ?? aircraftRegistry[0].emptyWeightKg
+  )
 
   // Cloud-hydrate on sign-in — replaces the (possibly stale, per-browser)
   // localStorage snapshot with the authoritative saved plan for this
@@ -180,6 +184,7 @@ export default function App() {
       if (cloud.passengerKg !== undefined) setPassengerKg(cloud.passengerKg)
       if (cloud.luggageKg !== undefined) setLuggageKg(cloud.luggageKg)
       if (cloud.mtowKg !== undefined) setMtowKg(cloud.mtowKg)
+      if (cloud.emptyWeightKg !== undefined) setEmptyWeightKg(cloud.emptyWeightKg)
     })
     return () => {
       cancelled = true
@@ -209,7 +214,8 @@ export default function App() {
       pilotKg,
       passengerKg,
       luggageKg,
-      mtowKg
+      mtowKg,
+      emptyWeightKg
     }
     savePersistedPlan(plan)
 
@@ -235,7 +241,8 @@ export default function App() {
     pilotKg,
     passengerKg,
     luggageKg,
-    mtowKg
+    mtowKg,
+    emptyWeightKg
   ])
 
   const [livePosition, setLivePosition] = useState<LivePosition | null>(null)
@@ -329,6 +336,14 @@ export default function App() {
     setAircraftCategoryTab(aircraft.category)
   }, [aircraft.category])
 
+  // Drives the Fuel panel's display unit — same toggle as the Aircraft
+  // summary's "Burn" line, so picking kg/h there is reflected everywhere
+  // fuel quantities show up, not just the burn rate. fuelOnBoardL etc. stay
+  // stored in litres regardless; fuelDisplayFactor is only for display/
+  // input conversion, and is 1 (a no-op) unless actually showing kg.
+  const showFuelInKg = aircraft.fuelType === 'jetA' && fuelBurnUnit === 'kgph'
+  const fuelDisplayFactor = showFuelInKg ? FUEL_DENSITY_KG_PER_L[aircraft.fuelType] : 1
+
   const usableFuelL = useMemo(() => {
     if (extendedTanks && aircraft.extendedFuelCapacityL !== undefined) {
       return aircraft.extendedFuelCapacityL - (aircraft.extendedUnusableFuelL ?? aircraft.unusableFuelL)
@@ -344,6 +359,7 @@ export default function App() {
     setCruiseSpeedKt(aircraft.cruiseTasKt)
     setReserveMinutes(aircraft.reserveMinutes)
     setMtowKg(aircraft.maxTakeoffWeightKg)
+    setEmptyWeightKg(aircraft.emptyWeightKg)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aircraftId])
 
@@ -408,7 +424,7 @@ export default function App() {
   const weight = useMemo(
     () =>
       computeWeight(
-        aircraft.emptyWeightKg,
+        emptyWeightKg,
         fuelOnBoardL,
         pilotKg,
         passengerKg,
@@ -416,7 +432,7 @@ export default function App() {
         mtowKg,
         aircraft.fuelType
       ),
-    [aircraft.emptyWeightKg, fuelOnBoardL, pilotKg, passengerKg, luggageKg, mtowKg, aircraft.fuelType]
+    [emptyWeightKg, fuelOnBoardL, pilotKg, passengerKg, luggageKg, mtowKg, aircraft.fuelType]
   )
 
   // undefined for aircraft with no published glideRatio/bestGlideSpeedKt
@@ -664,27 +680,24 @@ export default function App() {
         <div className="wind-row">
           <div className="field">
             <label htmlFor="cruise-speed">Cruise speed ({speedUnitLabel[speedUnit]})</label>
-            <input
+            <NumberStepper
               id="cruise-speed"
-              type="number"
-              inputMode="numeric"
               min={0}
+              step={1}
+              ariaLabel="cruise speed"
               value={Math.round(ktToUnit(cruiseSpeedKt, speedUnit))}
-              onChange={(e) =>
-                setCruiseSpeedKt(unitToKt(Number(e.target.value) || 0, speedUnit))
-              }
+              onChange={(v) => setCruiseSpeedKt(unitToKt(v, speedUnit))}
             />
           </div>
           <div className="field">
             <label htmlFor="cruise-alt">Cruise altitude (ft)</label>
-            <input
+            <NumberStepper
               id="cruise-alt"
-              type="number"
-              inputMode="numeric"
               min={0}
               step={100}
+              ariaLabel="cruise altitude"
               value={cruiseAltitudeFt}
-              onChange={(e) => setCruiseAltitudeFt(Number(e.target.value) || 0)}
+              onChange={setCruiseAltitudeFt}
             />
           </div>
         </div>
@@ -723,18 +736,13 @@ export default function App() {
                 ))}
               </select>
             </div>
-            <input
+            <NumberStepper
               id="wind-spd"
-              type="number"
-              inputMode="numeric"
               min={0}
+              step={1}
+              ariaLabel="wind speed"
               value={Math.round(ktToUnit(wind.speedKt, windSpeedUnit))}
-              onChange={(e) =>
-                setWind((w) => ({
-                  ...w,
-                  speedKt: unitToKt(Number(e.target.value) || 0, windSpeedUnit)
-                }))
-              }
+              onChange={(v) => setWind((w) => ({ ...w, speedKt: unitToKt(v, windSpeedUnit) }))}
             />
           </div>
         </div>
@@ -970,90 +978,103 @@ export default function App() {
           )}
           <div className="field">
             <div className="field-label-row">
-              <label htmlFor="fuel-onboard">Fuel onboard at takeoff (L)</label>
+              <label htmlFor="fuel-onboard">
+                Fuel onboard at takeoff ({showFuelInKg ? 'kg' : 'L'})
+              </label>
               <button
                 type="button"
                 className="fill-btn"
                 onClick={() => setFuelOnBoardL(usableFuelL)}
               >
-                Fill to {usableFuelL.toFixed(0)} L
+                Fill to {(usableFuelL * fuelDisplayFactor).toFixed(0)} {showFuelInKg ? 'kg' : 'L'}
               </button>
             </div>
-            <input
+            <NumberStepper
               id="fuel-onboard"
-              type="number"
-              inputMode="numeric"
               min={0}
-              max={usableFuelL}
-              value={Math.round(fuelOnBoardL)}
-              onChange={(e) => setFuelOnBoardL(Number(e.target.value) || 0)}
+              max={Math.round(usableFuelL * fuelDisplayFactor)}
+              step={showFuelInKg ? 5 : 1}
+              ariaLabel="fuel onboard"
+              value={Math.round(fuelOnBoardL * fuelDisplayFactor)}
+              onChange={(v) => setFuelOnBoardL(v / fuelDisplayFactor)}
             />
           </div>
           <div className="field">
             <label htmlFor="reserve-min">Reserve (min, min. {MIN_RESERVE_MINUTES})</label>
-            <input
+            <NumberStepper
               id="reserve-min"
-              type="number"
-              inputMode="numeric"
               min={MIN_RESERVE_MINUTES}
+              step={5}
+              ariaLabel="reserve minutes"
               value={reserveMinutes}
-              onChange={(e) =>
-                setReserveMinutes(Math.max(MIN_RESERVE_MINUTES, Number(e.target.value) || 0))
-              }
+              onChange={(v) => setReserveMinutes(Math.max(MIN_RESERVE_MINUTES, v))}
             />
           </div>
         </div>
-        <FuelGauge navLog={navLog} />
+        <FuelGauge navLog={navLog} unit={showFuelInKg ? 'kg' : 'L'} densityKgPerL={fuelDisplayFactor} />
       </section>
 
       <section className="panel" style={{ display: openSections.has('weight') ? undefined : 'none' }}>
         <p className="panel-label">Payload &amp; weight</p>
-        <div className="field mtow-field">
-          <label htmlFor="mtow-select">MTOW category</label>
-          <select
-            id="mtow-select"
-            value={mtowKg}
-            onChange={(e) => setMtowKg(Number(e.target.value))}
-          >
-            {MTOW_OPTIONS_KG.map((kg) => (
-              <option key={kg} value={kg}>
-                {kg} kg
-              </option>
-            ))}
-          </select>
+        <div className="wind-row">
+          <div className="field mtow-field">
+            <label htmlFor="mtow-select">MTOW category</label>
+            <select
+              id="mtow-select"
+              value={mtowKg}
+              onChange={(e) => setMtowKg(Number(e.target.value))}
+            >
+              {(aircraft.mtowCategoriesKg ?? [{ weightKg: aircraft.maxTakeoffWeightKg }]).map((opt) => (
+                <option key={opt.weightKg} value={opt.weightKg}>
+                  {opt.label ?? `${opt.weightKg} kg`}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="empty-weight-kg">Empty weight (kg)</label>
+            <NumberStepper
+              id="empty-weight-kg"
+              min={0}
+              step={1}
+              ariaLabel="empty weight"
+              value={emptyWeightKg}
+              onChange={setEmptyWeightKg}
+            />
+          </div>
         </div>
         <div className="wind-row">
           <div className="field">
             <label htmlFor="pilot-kg">Pilot (kg)</label>
-            <input
+            <NumberStepper
               id="pilot-kg"
-              type="number"
-              inputMode="numeric"
               min={0}
+              step={1}
+              ariaLabel="pilot weight"
               value={pilotKg}
-              onChange={(e) => setPilotKg(Number(e.target.value) || 0)}
+              onChange={setPilotKg}
             />
           </div>
           <div className="field">
             <label htmlFor="passenger-kg">Passenger (kg)</label>
-            <input
+            <NumberStepper
               id="passenger-kg"
-              type="number"
-              inputMode="numeric"
               min={0}
+              step={1}
+              ariaLabel="passenger weight"
               value={passengerKg}
-              onChange={(e) => setPassengerKg(Number(e.target.value) || 0)}
+              onChange={setPassengerKg}
             />
           </div>
           <div className="field">
             <label htmlFor="luggage-kg">Luggage (kg)</label>
-            <input
+            <NumberStepper
               id="luggage-kg"
-              type="number"
-              inputMode="numeric"
               min={0}
+              step={1}
+              ariaLabel="luggage weight"
               value={luggageKg}
-              onChange={(e) => setLuggageKg(Number(e.target.value) || 0)}
+              onChange={setLuggageKg}
             />
           </div>
         </div>

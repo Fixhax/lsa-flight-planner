@@ -15,7 +15,8 @@ const HELP_GROUPS: HelpGroup[] = [
   {
     title: 'Cruise settings',
     paragraphs: [
-      "Cruise speed defaults to your selected aircraft's published figure — lower it for a fuel-saving cruise or a short-field configuration. Altitude is recorded for your nav log but doesn't yet adjust true airspeed or fuel burn for density altitude."
+      "Cruise speed defaults to your selected aircraft's published figure — lower it for a fuel-saving cruise or a short-field configuration. Altitude is recorded for your nav log but doesn't yet adjust true airspeed or fuel burn for density altitude.",
+      "Weight, altitude, speed, and quantity fields throughout the app (here, Wind, Fuel, and Payload & weight) use a +/- stepper instead of a plain box — tap to nudge the value, or hold either button to run it up or down quickly. You can still type a value directly into the middle of it too."
     ]
   },
   {
@@ -75,13 +76,15 @@ const HELP_GROUPS: HelpGroup[] = [
   {
     title: 'Fuel',
     paragraphs: [
-      "Extended-tank capacity (where applicable) is an estimate, not a confirmed factory spec — verify against your aircraft's documentation before relying on it."
+      "Extended-tank capacity (where applicable) is an estimate, not a confirmed factory spec — verify against your aircraft's documentation before relying on it.",
+      "For Jet A aircraft with kg/h selected (see the Aircraft panel), fuel onboard and the fuel gauge switch to kg too — everything here follows that one toggle, so you're not reading some numbers in L and others in kg."
     ]
   },
   {
     title: 'Payload & weight',
     paragraphs: [
-      "Fuel weight uses an approximate density for the selected aircraft's fuel type — 0.72 kg/L for avgas, 0.8 kg/L for Jet A. This is a takeoff-weight check only — it doesn't verify CG position within limits."
+      "Fuel weight uses an approximate density for the selected aircraft's fuel type — 0.72 kg/L for avgas, 0.8 kg/L for Jet A. This is a takeoff-weight check only — it doesn't verify CG position within limits.",
+      "MTOW category lists whatever variants this app knows about for the selected aircraft (e.g. 450kg microlight vs 600kg LSA, or a helicopter's internal/external-load limits) — resets to that aircraft's default whenever you switch aircraft. Empty weight defaults to this app's registry figure but is editable, since a real aircraft's equipped empty weight (avionics, interior, etc.) is often different — worth setting to your actual aircraft's weighed figure rather than relying on the default."
     ]
   },
   {
