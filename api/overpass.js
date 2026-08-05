@@ -19,6 +19,14 @@ export default async function handler(req, res) {
     const upstream = await fetch('https://overpass-api.de/api/interpreter', {
       method: 'POST',
       body: new URLSearchParams({ data: query }),
+      // Node's fetch sends no User-Agent/Accept by default, unlike curl —
+      // overpass-api.de's server (or a WAF in front of it) appears to
+      // reject requests missing them with a 406, at least from cloud
+      // provider IP ranges.
+      headers: {
+        'user-agent': 'lsa-flight-planner (+https://lsa-flight-planner-944c.vercel.app)',
+        accept: 'application/json, text/plain, */*'
+      },
       signal: AbortSignal.timeout(20000)
     })
     const body = await upstream.text()
