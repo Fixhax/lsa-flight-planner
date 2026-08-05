@@ -17,6 +17,25 @@
   color-scheme: dark;
 }
 
+/* Light palette — the map's own overlays (route line, glide circles,
+   direct-to/engine-out lines, HUD) keep their fixed colors regardless of
+   theme, since those are tuned for contrast against map tiles, not app
+   chrome. Cyan/amber/red are darkened a step from the dark-theme neons,
+   which don't have enough contrast against a white background. */
+:root[data-theme='light'] {
+  --bg: #f4f6f9;
+  --panel: #ffffff;
+  --panel-raised: #edf1f6;
+  --border: #d3dae3;
+  --text: #16202c;
+  --text-muted: #5b6b80;
+  --cyan: #0f8f82;
+  --amber: #ad7209;
+  --red: #c62f34;
+
+  color-scheme: light;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -93,6 +112,21 @@ button:focus-visible {
   padding: 8px 10px;
   font-weight: 500;
   font-size: 0.82rem;
+}
+
+.theme-toggle-btn {
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.theme-toggle-btn:hover {
+  background: var(--panel);
 }
 
 .aircraft-select {
@@ -918,6 +952,94 @@ button:focus-visible {
   color: var(--red);
 }
 
+.undo-waypoints-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px 0;
+  white-space: nowrap;
+}
+
+.undo-waypoints-btn:hover:not(:disabled) {
+  color: var(--cyan);
+}
+
+.undo-waypoints-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  text-decoration: none;
+}
+
+/* ---------- checklist ---------- */
+
+.checklist-group {
+  margin-bottom: 16px;
+}
+
+.checklist-group-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--cyan);
+  margin: 0 0 6px;
+}
+
+.checklist-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+
+.checklist-item:hover {
+  background: var(--panel-raised);
+}
+
+.checklist-item input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.checklist-item.checked {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.checklist-reset-btn {
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.checklist-reset-btn:hover:not(:disabled) {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.checklist-reset-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 /* ---------- fuel gauge (signature element) ---------- */
 
 .fuel-gauge {
@@ -1502,6 +1624,50 @@ button:focus-visible {
   flex-direction: column;
   gap: 12px;
   margin-top: 12px;
+}
+
+/* ---------- METAR / TAF ---------- */
+
+.metar-taf-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.metar-taf-card {
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.metar-taf-icao {
+  font-weight: 600;
+  color: var(--cyan);
+  margin: 0 0 8px;
+  font-family: var(--font-mono);
+}
+
+.metar-taf-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 10px 0 4px;
+}
+
+.metar-taf-text {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  margin: 0;
 }
 
 .weather-report-card {
@@ -2171,6 +2337,117 @@ button:focus-visible {
 }
 
 .flight-history-clear-all:hover {
+  color: var(--red);
+}
+
+/* ---------- saved plans ---------- */
+
+.saved-plans-new-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.saved-plans-name-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.saved-plans-save-btn {
+  flex-shrink: 0;
+  background: var(--panel-raised);
+  border: 1px solid var(--cyan);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--cyan);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.saved-plans-save-btn:hover:not(:disabled) {
+  background: rgba(79, 209, 197, 0.1);
+}
+
+.saved-plans-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.saved-plans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.saved-plans-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.saved-plans-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.85rem;
+}
+
+.saved-plans-meta span {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.saved-plans-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.saved-plans-load-btn,
+.saved-plans-overwrite-btn,
+.saved-plans-rename-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.saved-plans-load-btn:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.saved-plans-overwrite-btn:hover,
+.saved-plans-rename-btn:hover {
+  border-color: var(--text);
+  color: var(--text);
+}
+
+.saved-plans-delete {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 6px;
+  line-height: 1;
+}
+
+.saved-plans-delete:hover {
   color: var(--red);
 }
 

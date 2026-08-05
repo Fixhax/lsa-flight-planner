@@ -11,6 +11,8 @@ interface Props {
   error: string | null
   start: () => void
   stop: () => void
+  wakeLockSupported?: boolean
+  wakeLockHeld?: boolean
 }
 
 export default function LiveTracking({
@@ -21,7 +23,9 @@ export default function LiveTracking({
   position,
   error,
   start,
-  stop
+  stop,
+  wakeLockSupported,
+  wakeLockHeld
 }: Props) {
   const remaining = position ? estimateRemaining(waypoints, position, fallbackGroundSpeedKt) : null
 
@@ -46,6 +50,9 @@ export default function LiveTracking({
           <p className="live-tracking-status">
             Accuracy &plusmn;{position.accuracyM ? Math.round(position.accuracyM) : '?'} m
             {remaining?.usingGpsSpeed && ' \u00b7 using live GPS ground speed'}
+            {wakeLockSupported === false
+              ? ' \u00b7 screen may still sleep (not supported on this browser)'
+              : wakeLockHeld && ' \u00b7 screen kept awake'}
           </p>
           {remaining && Number.isFinite(remaining.etaMs) ? (
             <div className="totals-grid timer-summary">

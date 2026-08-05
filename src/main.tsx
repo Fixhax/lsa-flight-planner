@@ -3,8 +3,13 @@ import ReactDOM from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
 import App from './App'
 import AuthGate from './components/AuthGate'
+import { applyTheme, getInitialTheme } from './lib/theme'
 import 'leaflet/dist/leaflet.css'
 import './index.css'
+
+// Applied before the first render so there's no flash of the wrong theme
+// on load.
+applyTheme(getInitialTheme())
 
 // Without this, a new deployment updates the service worker in the
 // background, but a tab/app instance you already had open keeps running

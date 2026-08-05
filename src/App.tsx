@@ -31,19 +31,24 @@ import FlightTimer from './components/FlightTimer'
 import TimerActionBar from './components/TimerActionBar'
 import { useFlightTimer } from './hooks/useFlightTimer'
 import { useGpsTracking } from './hooks/useGpsTracking'
+import { useWakeLock } from './hooks/useWakeLock'
 import LiveTracking from './components/LiveTracking'
 import type { LivePosition } from './lib/liveTracking'
 import SectionMenu from './components/SectionMenu'
 import WeatherReport from './components/WeatherReport'
 import RadioFrequencies from './components/RadioFrequencies'
 import { computeTrafficPattern, parseRunwayEnds } from './lib/trafficPattern'
-import { loadPersistedPlan, savePersistedPlan } from './lib/persistence'
+import { loadPersistedPlan, savePersistedPlan, type PersistedPlan } from './lib/persistence'
 import { useAuth } from './lib/authContext'
 import { loadCloudPlan, saveCloudPlan, saveFlightTrack, type SavedFlightTrack } from './lib/cloudSync'
 import { distanceNm } from './lib/geo'
 import FlightHistory from './components/FlightHistory'
+import SavedPlans from './components/SavedPlans'
 import Help from './components/Help'
 import AttitudeIndicator from './components/AttitudeIndicator'
+import Checklist from './components/Checklist'
+import MetarTaf from './components/MetarTaf'
+import { applyTheme, getInitialTheme, type Theme } from './lib/theme'
 
 // crypto.randomUUID() rather than an incrementing counter — a counter
 // resets to 1 on every page load, while persisted waypoints (loaded back
@@ -93,9 +98,12 @@ const SECTION_GROUPS: { label: string; sections: { id: string; label: string }[]
       { id: 'route', label: 'Route & map' },
       { id: 'glide', label: 'Glide range' },
       { id: 'weatherreport', label: 'Weather report' },
+      { id: 'metartaf', label: 'METAR / TAF' },
       { id: 'frequencies', label: 'Radio frequencies' },
       { id: 'flightplan', label: 'Flight plan' },
-      { id: 'daylight', label: 'Daylight' }
+      { id: 'daylight', label: 'Daylight' },
+      { id: 'checklist', label: 'Checklist' },
+      { id: 'savedplans', label: 'Saved plans' }
     ]
   },
   {
@@ -161,47 +169,37 @@ export default function App() {
     persisted?.emptyWeightKg ?? aircraftRegistry[0].emptyWeightKg
   )
 
-  // Cloud-hydrate on sign-in — replaces the (possibly stale, per-browser)
-  // localStorage snapshot with the authoritative saved plan for this
-  // account once it arrives. A no-op when signed out or unconfigured.
-  useEffect(() => {
-    if (!userId) return
-    let cancelled = false
-    loadCloudPlan(userId).then((cloud) => {
-      if (cancelled || !cloud) return
-      if (cloud.aircraftId !== undefined) setAircraftId(cloud.aircraftId)
-      if ((cloud.waypoints as Waypoint[] | undefined)?.length) {
-        setWaypoints(cloud.waypoints as Waypoint[])
-      }
-      if (cloud.wind) setWind(cloud.wind)
-      if (cloud.cruiseSpeedKt !== undefined) setCruiseSpeedKt(cloud.cruiseSpeedKt)
-      if (cloud.cruiseAltitudeFt !== undefined) setCruiseAltitudeFt(cloud.cruiseAltitudeFt)
-      if (cloud.speedUnit) setSpeedUnit(cloud.speedUnit as SpeedUnit)
-      if (cloud.windSpeedUnit) setWindSpeedUnit(cloud.windSpeedUnit as SpeedUnit)
-      if (cloud.fuelBurnUnit) setFuelBurnUnit(cloud.fuelBurnUnit as FuelBurnUnit)
-      if (cloud.extendedTanks !== undefined) setExtendedTanks(cloud.extendedTanks)
-      if (cloud.fuelOnBoardL !== undefined) setFuelOnBoardL(cloud.fuelOnBoardL)
-      if (cloud.reserveMinutes !== undefined) setReserveMinutes(cloud.reserveMinutes)
-      if (cloud.pilotKg !== undefined) setPilotKg(cloud.pilotKg)
-      if (cloud.passengerKg !== undefined) setPassengerKg(cloud.passengerKg)
-      if (cloud.luggageKg !== undefined) setLuggageKg(cloud.luggageKg)
-      if (cloud.mtowKg !== undefined) setMtowKg(cloud.mtowKg)
-      if (cloud.emptyWeightKg !== undefined) setEmptyWeightKg(cloud.emptyWeightKg)
-    })
-    return () => {
-      cancelled = true
+  // Applies a PersistedPlan-shaped snapshot onto the working state — shared
+  // by the cloud-hydrate-on-sign-in effect below and by "Load" in the
+  // Saved plans panel, so there's exactly one place that knows how to
+  // unpack this shape. Only touches fields that are actually present, same
+  // partial-merge behavior either caller needs.
+  function applyPersistedPlan(plan: PersistedPlan) {
+    if (plan.aircraftId !== undefined) setAircraftId(plan.aircraftId)
+    if ((plan.waypoints as Waypoint[] | undefined)?.length) {
+      setWaypoints(plan.waypoints as Waypoint[])
     }
-  }, [userId])
+    if (plan.wind) setWind(plan.wind)
+    if (plan.cruiseSpeedKt !== undefined) setCruiseSpeedKt(plan.cruiseSpeedKt)
+    if (plan.cruiseAltitudeFt !== undefined) setCruiseAltitudeFt(plan.cruiseAltitudeFt)
+    if (plan.speedUnit) setSpeedUnit(plan.speedUnit as SpeedUnit)
+    if (plan.windSpeedUnit) setWindSpeedUnit(plan.windSpeedUnit as SpeedUnit)
+    if (plan.fuelBurnUnit) setFuelBurnUnit(plan.fuelBurnUnit as FuelBurnUnit)
+    if (plan.extendedTanks !== undefined) setExtendedTanks(plan.extendedTanks)
+    if (plan.fuelOnBoardL !== undefined) setFuelOnBoardL(plan.fuelOnBoardL)
+    if (plan.reserveMinutes !== undefined) setReserveMinutes(plan.reserveMinutes)
+    if (plan.pilotKg !== undefined) setPilotKg(plan.pilotKg)
+    if (plan.passengerKg !== undefined) setPassengerKg(plan.passengerKg)
+    if (plan.luggageKg !== undefined) setLuggageKg(plan.luggageKg)
+    if (plan.mtowKg !== undefined) setMtowKg(plan.mtowKg)
+    if (plan.emptyWeightKg !== undefined) setEmptyWeightKg(plan.emptyWeightKg)
+  }
 
-  const cloudSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  // Keep the plan safe across refreshes — deliberately excludes transient
-  // things like GPS position, timer sessions, and which panels are open.
-  // Always saved locally (instant, works offline); also pushed to the
-  // account's cloud row (debounced, so typing doesn't hammer the database)
-  // when signed in.
-  useEffect(() => {
-    const plan = {
+  // The inverse of applyPersistedPlan — snapshots the working state into
+  // the same shape, for the continuous autosave below and for "Save as" /
+  // "Overwrite" in the Saved plans panel.
+  function buildCurrentPlan(): PersistedPlan {
+    return {
       aircraftId,
       waypoints,
       wind,
@@ -219,6 +217,32 @@ export default function App() {
       mtowKg,
       emptyWeightKg
     }
+  }
+
+  // Cloud-hydrate on sign-in — replaces the (possibly stale, per-browser)
+  // localStorage snapshot with the authoritative saved plan for this
+  // account once it arrives. A no-op when signed out or unconfigured.
+  useEffect(() => {
+    if (!userId) return
+    let cancelled = false
+    loadCloudPlan(userId).then((cloud) => {
+      if (cancelled || !cloud) return
+      applyPersistedPlan(cloud)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
+
+  const cloudSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Keep the plan safe across refreshes — deliberately excludes transient
+  // things like GPS position, timer sessions, and which panels are open.
+  // Always saved locally (instant, works offline); also pushed to the
+  // account's cloud row (debounced, so typing doesn't hammer the database)
+  // when signed in.
+  useEffect(() => {
+    const plan = buildCurrentPlan()
     savePersistedPlan(plan)
 
     if (userId) {
@@ -265,6 +289,12 @@ export default function App() {
     (getAircraftById(persisted?.aircraftId ?? aircraftRegistry[0].id) ?? aircraftRegistry[0]).category
   )
   const [isMapFullscreen, setIsMapFullscreen] = useState(false)
+  const [theme, setTheme] = useState<Theme>(getInitialTheme)
+  function toggleTheme() {
+    const next: Theme = theme === 'dark' ? 'light' : 'dark'
+    applyTheme(next)
+    setTheme(next)
+  }
 
   // Guaranteed fallback exit — regardless of what else might go wrong with
   // the on-screen buttons, Escape always works.
@@ -279,6 +309,7 @@ export default function App() {
 
   const timer = useFlightTimer(setTimerStatus)
   const gps = useGpsTracking(setLivePosition, setLiveStatus)
+  const wakeLock = useWakeLock(gps.tracking)
 
   // Ground elevation under the aircraft's current GPS position, refetched
   // when it's moved more than 1nm from the last lookup (or that lookup is
@@ -564,7 +595,25 @@ export default function App() {
     setWaypoints((prev) => prev.map((w) => (w.id === id ? { ...w, ...patch } : w)))
   }
 
+  // Undo, scoped to the "structural" route edits (add/remove/insert/move/
+  // clear/apply-a-strip) rather than every keystroke of a plain
+  // updateWaypoint call — renaming a waypoint by typing already has the
+  // browser's own text-field undo, and snapshotting on every keystroke
+  // would make one Undo press here only revert the last character typed.
+  const [waypointHistory, setWaypointHistory] = useState<Waypoint[][]>([])
+  const MAX_UNDO_STEPS = 20
+  function pushWaypointHistory() {
+    setWaypointHistory((h) => [...h.slice(-(MAX_UNDO_STEPS - 1)), waypoints])
+  }
+  function undoWaypoints() {
+    if (waypointHistory.length === 0) return
+    const prev = waypointHistory[waypointHistory.length - 1]
+    setWaypointHistory((h) => h.slice(0, -1))
+    setWaypoints(prev)
+  }
+
   function applyStrip(id: string, strip: AirstripEntry) {
+    pushWaypointHistory()
     updateWaypoint(id, {
       name: strip.icao ? `${strip.name} (${strip.icao})` : strip.name,
       lat: strip.lat,
@@ -584,6 +633,7 @@ export default function App() {
   // waypoint here" — the destination stays pinned as the last waypoint
   // instead of being pushed down by each new blank one.
   function addWaypoint() {
+    pushWaypointHistory()
     setWaypoints((prev) => {
       if (prev.length < 2) return [...prev, makeWaypoint()]
       const next = [...prev]
@@ -593,6 +643,7 @@ export default function App() {
   }
 
   function removeWaypoint(id: string) {
+    pushWaypointHistory()
     setWaypoints((prev) => (prev.length > 2 ? prev.filter((w) => w.id !== id) : prev))
   }
 
@@ -603,6 +654,7 @@ export default function App() {
   // their markers stayed on the map with no way to remove them.
   function clearWaypoints() {
     if (!confirm('Clear all waypoints?')) return
+    pushWaypointHistory()
     setWaypoints([makeWaypoint(), makeWaypoint()])
   }
 
@@ -611,6 +663,7 @@ export default function App() {
   // position. Everything downstream (nav log, fuel burn, totals) recomputes
   // automatically since it's all derived from the waypoints array.
   function insertWaypoint(afterIndex: number, lat: number, lon: number) {
+    pushWaypointHistory()
     setWaypoints((prev) => {
       const next = [...prev]
       const wp = makeWaypoint()
@@ -620,6 +673,7 @@ export default function App() {
   }
 
   function moveWaypoint(id: string, lat: number, lon: number) {
+    pushWaypointHistory()
     updateWaypoint(id, { lat, lon })
   }
 
@@ -634,6 +688,15 @@ export default function App() {
           LSA <span>Planner</span>
         </div>
         <div className="header-controls">
+          <button
+            type="button"
+            className="theme-toggle-btn"
+            onClick={toggleTheme}
+            title="Toggle light/dark theme"
+            aria-label="Toggle light/dark theme"
+          >
+            {theme === 'dark' ? '☀' : '☽'}
+          </button>
           <select
             className="unit-select"
             value={speedUnit}
@@ -1024,6 +1087,14 @@ export default function App() {
           <button className="add-waypoint" onClick={addWaypoint}>
             + Add waypoint
           </button>
+          <button
+            className="undo-waypoints-btn"
+            onClick={undoWaypoints}
+            disabled={waypointHistory.length === 0}
+            title="Undo the last route edit"
+          >
+            &#8630; Undo
+          </button>
           <button className="clear-waypoints-btn" onClick={clearWaypoints}>
             Clear all waypoints
           </button>
@@ -1045,6 +1116,8 @@ export default function App() {
           error={gps.error}
           start={gps.start}
           stop={gps.stop}
+          wakeLockSupported={wakeLock.supported}
+          wakeLockHeld={wakeLock.held}
         />
       </section>
 
@@ -1066,6 +1139,11 @@ export default function App() {
       <section className="panel" style={{ display: openSections.has('weatherreport') ? undefined : 'none' }}>
         <p className="panel-label">Weather report</p>
         <WeatherReport waypoints={waypoints} />
+      </section>
+
+      <section className="panel" style={{ display: openSections.has('metartaf') ? undefined : 'none' }}>
+        <p className="panel-label">METAR / TAF</p>
+        <MetarTaf waypoints={waypoints} />
       </section>
 
       <section className="panel" style={{ display: openSections.has('frequencies') ? undefined : 'none' }}>
@@ -1246,6 +1324,11 @@ export default function App() {
         <DaylightInfo waypoints={waypoints} />
       </section>
 
+      <section className="panel" style={{ display: openSections.has('checklist') ? undefined : 'none' }}>
+        <p className="panel-label">Checklist</p>
+        <Checklist />
+      </section>
+
       <section className="panel" style={{ display: openSections.has('flightplan') ? undefined : 'none' }}>
         <p className="panel-label">Flight plan (Norway VFR)</p>
         <FlightPlanTool
@@ -1255,6 +1338,11 @@ export default function App() {
           cruiseAltitudeFt={cruiseAltitudeFt}
           defaultPob={1 + (passengerKg > 0 ? 1 : 0)}
         />
+      </section>
+
+      <section className="panel" style={{ display: openSections.has('savedplans') ? undefined : 'none' }}>
+        <p className="panel-label">Saved plans</p>
+        <SavedPlans userId={userId} getCurrentPlan={buildCurrentPlan} onLoad={applyPersistedPlan} />
       </section>
 
       <section className="panel" style={{ display: openSections.has('timer') ? undefined : 'none' }}>

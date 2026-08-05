@@ -59,6 +59,58 @@ export async function deleteFlightTrack(userId: string, trackId: string): Promis
   await supabase.from('flight_tracks').delete().eq('id', trackId).eq('user_id', userId)
 }
 
+export interface SavedPlanEntry {
+  id: string
+  name: string
+  updatedAt: number
+  data: PersistedPlan
+}
+
+// Named, explicitly-saved snapshots — separate from the single
+// always-current plan above, which keeps autosaving on its own. Requires
+// an account (same as flight history); there's no local-only fallback,
+// since this is a list to browse/manage rather than something that needs
+// to work offline the moment you open the app.
+export async function loadSavedPlans(userId: string): Promise<SavedPlanEntry[]> {
+  if (!supabase) return []
+  const { data, error } = await supabase
+    .from('saved_plans')
+    .select('id, name, data, updated_at')
+    .eq('user_id', userId)
+    .order('updated_at', { ascending: false })
+  if (error || !data) return []
+  return data.map((row) => ({
+    id: row.id as string,
+    name: row.name as string,
+    updatedAt: new Date(row.updated_at as string).getTime(),
+    data: row.data as PersistedPlan
+  }))
+}
+
+export async function createSavedPlan(userId: string, name: string, plan: PersistedPlan): Promise<void> {
+  if (!supabase) return
+  await supabase.from('saved_plans').insert({ user_id: userId, name, data: plan })
+}
+
+export async function renameSavedPlan(userId: string, id: string, name: string): Promise<void> {
+  if (!supabase) return
+  await supabase.from('saved_plans').update({ name }).eq('id', id).eq('user_id', userId)
+}
+
+export async function overwriteSavedPlan(userId: string, id: string, plan: PersistedPlan): Promise<void> {
+  if (!supabase) return
+  await supabase
+    .from('saved_plans')
+    .update({ data: plan, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('user_id', userId)
+}
+
+export async function deleteSavedPlan(userId: string, id: string): Promise<void> {
+  if (!supabase) return
+  await supabase.from('saved_plans').delete().eq('id', id).eq('user_id', userId)
+}
+
 export async function loadFlightTracks(userId: string): Promise<SavedFlightTrack[]> {
   if (!supabase) return []
   const { data, error } = await supabase

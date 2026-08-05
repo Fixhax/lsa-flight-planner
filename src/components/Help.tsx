@@ -42,7 +42,7 @@ const HELP_GROUPS: HelpGroup[] = [
   {
     title: 'Route & map',
     paragraphs: [
-      "Drag a waypoint marker to reposition it, or drag one of the small handles along the route line to insert a new waypoint there — the nav log and fuel numbers update automatically. The dashed amber circles show engine-out glide range from each waypoint at your planned cruise altitude. Use the layers icon (top-right) to switch to Kartverket's detailed Norway topographic tiles — free, official, but Norway-only; OpenStreetMap covers Sweden too. The same menu also has an optional aviation overlay (airspace, airports, navaids, and reporting points combined, courtesy of OpenAIP) you can layer on top of either base map. Small grey diamonds show every curated strip, not just your route.",
+      "Drag a waypoint marker to reposition it, or drag one of the small handles along the route line to insert a new waypoint there — the nav log and fuel numbers update automatically. \"Undo\", next to \"Add waypoint\" below the list, steps back through your last 20 route edits (add, remove, insert, move, clear, or applying a strip from search) — it's disabled when there's nothing to undo. Typing a waypoint's name doesn't count as an edit here (your browser's own text-field undo already covers that), only structural changes to the route. The dashed amber circles show engine-out glide range from each waypoint at your planned cruise altitude. Use the layers icon (top-right) to switch to Kartverket's detailed Norway topographic tiles — free, official, but Norway-only; OpenStreetMap covers Sweden too. The same menu also has an optional aviation overlay (airspace, airports, navaids, and reporting points combined, courtesy of OpenAIP) you can layer on top of either base map. Small grey diamonds show every curated strip, not just your route.",
       "Push and hold anywhere on empty map space (or right-click on desktop) to open a menu at that point. \"Set as start\" inserts it as the new first waypoint (green Start badge in the list below), and \"Set destination\" appends it as the new last waypoint (amber Destination badge) — once both are set, \"Add waypoint here\" always inserts between them instead of pushing the destination further down the list, so tapping out a route in any order still keeps start and destination pinned at the ends. \"Direct to here\" behaves differently depending on GPS: with GPS off it's inserted as your immediate next waypoint, ahead of the rest of your plan; with GPS on, it instead draws a bold red-orange dashed line straight from your live position to that point (shown with distance, an ETA in minutes, and an estimated fuel used — from your aircraft's cruise burn rate applied to that ETA, not a measured figure — in the bottom-left HUD — tap it to cancel) without touching your saved route at all. ETA/fuel use your live GPS ground speed once it's above 5kt; below that (or with no speed reading yet) they fall back to your planned cruise speed instead, marked \"(planned)\" so it's clear which one you're looking at. The remove button on each waypoint refuses to go below 2 (nav log and fuel calc need a departure and destination) — use \"Clear all waypoints\" below the list to fully reset the route instead.",
       "The screen icon (top-left) opens a fullscreen map with flight-timer buttons below it, handy for practicing patterns. The crosshair icon follows your live GPS position. The (i) icon opens a drawer with nearby radio frequencies and an airspace-ceiling check, without leaving this view — see \"Airspace & nearby info\" below. The ⚠ icon is engine-out targeting — see \"Engine out\" above. The small dial (bottom-right) rotates the map — drag it to point any direction up; double-click/tap it to reset to north-up. All the map's own buttons (zoom, fullscreen, follow, info, engine-out, layers) are sized for easy use one-handed in flight.",
       "Landing pattern overlay: the downwind offset and base-turn point (where the threshold sits 45° behind the wing) are exact geometry for whatever distance you enter. Traffic side defaults to left since that's the global convention, but published pattern direction isn't looked up automatically — verify locally. Magnetic variation is an approximate figure you adjust by hand, not looked up live. This is a visual training reference, not a substitute for the field's actual published procedures.",
@@ -59,7 +59,8 @@ const HELP_GROUPS: HelpGroup[] = [
   {
     title: 'Live tracking',
     paragraphs: [
-      "Uses this device's GPS — needs your permission, a page served over https (or localhost), and doesn't work from a plain local file on most browsers, especially iOS Safari. ETA uses live GPS ground speed when available, otherwise your planned cruise ground speed. The current-position marker shows on the map as a magenta arrow. This also works from the fullscreen map view."
+      "Uses this device's GPS — needs your permission, a page served over https (or localhost), and doesn't work from a plain local file on most browsers, especially iOS Safari. ETA uses live GPS ground speed when available, otherwise your planned cruise ground speed. The current-position marker shows on the map as a magenta arrow. This also works from the fullscreen map view.",
+      "While GPS tracking is on, this also tries to keep the screen from sleeping (the Wake Lock API) — the status line here says \"screen kept awake\" when it's actually holding that lock. Some browsers don't support this (older Safari, mainly) or can still let the screen sleep to save battery; if that happens, your device's own display-timeout setting is the fallback. It releases automatically once you stop tracking."
     ]
   },
   {
@@ -108,6 +109,13 @@ const HELP_GROUPS: HelpGroup[] = [
     ]
   },
   {
+    title: 'METAR / TAF',
+    paragraphs: [
+      "The real, official published aviation reports (Aviation Weather Center's free public data) for your departure and destination — shown as raw, undecoded text on purpose, so nothing gets lost or misread in translation. Fetched only when you tap the button, not automatically.",
+      "Only exists for whichever of your departure/destination carries a known ICAO identifier — most of this app's curated grass/gravel strips are uncontrolled and don't have one, so this often has nothing to show for them. This is still not a substitute for a full pre-flight briefing (SIGMET/NOTAM/AIRMET aren't included) — see \"Weather report\" above for the general forecast model instead, which is a different thing entirely."
+    ]
+  },
+  {
     title: 'Flight plan (Norway VFR)',
     paragraphs: [
       "Laid out by standard ICAO flight-plan item numbers (per SKYbrary's Flight Plan Completion guidance) — this prepares the information, it doesn't submit anything anywhere. File it yourself via ippc.no (Avinor's official briefing portal) or by radio/phone to AFIS. EOBT is UTC, not local — ICAO flight plans are always filed in UTC."
@@ -120,9 +128,27 @@ const HELP_GROUPS: HelpGroup[] = [
     ]
   },
   {
+    title: 'Checklist',
+    paragraphs: [
+      "Generic reference items only, not any specific aircraft's published checklist — always fly your aircraft's actual POH/AFM checklist instead. Checked boxes are deliberately not saved between visits (a checklist that remembers yesterday's checked boxes could make you think something's already been checked when it hasn't) — use \"Reset all\" between flights within the same session, e.g. after pre-flight and before using the before-landing list."
+    ]
+  },
+  {
+    title: 'Saved plans',
+    paragraphs: [
+      "A library of named snapshots, separate from your one always-open plan (which keeps autosaving on its own regardless of anything here). \"Save as new\" captures your current aircraft, route, fuel, and weight setup under a name; \"Load\" brings a saved one back into the currently-open plan (overwriting what's there — save or note down your current plan first if you don't want to lose it); \"Overwrite\" updates a saved plan with what's currently open; \"Rename\" just renames it. Requires an account — there's no local-only version of this list."
+    ]
+  },
+  {
+    title: 'Appearance',
+    paragraphs: [
+      "The sun/moon button in the header switches between dark and light. Defaults to your device's own light/dark setting the first time you open the app, then remembers whatever you pick after that, on this browser. The map's own overlays (route line, glide circles, direct-to/engine-out lines) keep the same colors either way — they're tuned for contrast against map tiles, not app theme."
+    ]
+  },
+  {
     title: 'Account & data',
     paragraphs: [
-      "Signing in syncs your flight-plan settings (aircraft, waypoints, fuel, weight, wind, etc.) to your account, so they follow you across devices — without an account, they're only saved to this browser. Saved flight tracks are always tied to your account and only visible to you."
+      "Signing in syncs your flight-plan settings (aircraft, waypoints, fuel, weight, wind, etc.) to your account, so they follow you across devices — without an account, they're only saved to this browser. Saved flight tracks and saved plans are always tied to your account and only visible to you."
     ]
   }
 ]
