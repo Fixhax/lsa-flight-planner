@@ -6,6 +6,7 @@ import type { GlideResult } from '../lib/glide'
 import type { LivePosition } from '../lib/liveTracking'
 import { airstrips } from '../data/strips'
 import type { TrafficPatternResult } from '../lib/trafficPattern'
+import type { EngineOutTarget, UnverifiedSite } from '../lib/engineOut'
 import MapInfoDrawer from './MapInfoDrawer'
 import { useCloseOnOutsideClick } from '../hooks/useCloseOnOutsideClick'
 
@@ -24,6 +25,12 @@ interface Props {
   fullscreen?: boolean
   onToggleFullscreen?: () => void
   historyTrack?: { lat: number; lon: number }[] | null
+  engineOutActive?: boolean
+  engineOutTarget?: EngineOutTarget | null
+  engineOutSites?: UnverifiedSite[] | null
+  engineOutLoading?: boolean
+  engineOutError?: string | null
+  onToggleEngineOut?: () => void
 }
 
 // Icon size doubles as the draggable hit-area (Leaflet centers it on
@@ -98,7 +105,13 @@ export default function RouteMap({
   pattern,
   fullscreen = false,
   onToggleFullscreen,
-  historyTrack
+  historyTrack,
+  engineOutActive = false,
+  engineOutTarget,
+  engineOutSites,
+  engineOutLoading = false,
+  engineOutError,
+  onToggleEngineOut
 }: Props) {
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -109,12 +122,16 @@ export default function RouteMap({
   const historyLayerRef = useRef<L.LayerGroup | null>(null)
   const liveGlideLayerRef = useRef<L.LayerGroup | null>(null)
   const directToLayerRef = useRef<L.LayerGroup | null>(null)
+  const engineOutLayerRef = useRef<L.LayerGroup | null>(null)
   const liveMarkerRef = useRef<L.Marker | null>(null)
   const prevIdsKeyRef = useRef<string>('')
   const onToggleFullscreenRef = useRef(onToggleFullscreen)
   onToggleFullscreenRef.current = onToggleFullscreen
+  const onToggleEngineOutRef = useRef(onToggleEngineOut)
+  onToggleEngineOutRef.current = onToggleEngineOut
   const followBtnRef = useRef<HTMLButtonElement | null>(null)
   const infoBtnRef = useRef<HTMLButtonElement | null>(null)
+  const engineOutBtnRef = useRef<HTMLButtonElement | null>(null)
   const wasFollowingRef = useRef(false)
   const longPressMenuRef = useRef<HTMLDivElement | null>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -262,6 +279,24 @@ export default function RouteMap({
     })
     new InfoControl({ position: 'topleft' }).addTo(map)
 
+    // Engine out — direct-to line to the nearest curated airfield still
+    // inside the live glide footprint, plus an unverified fields/roads
+    // reference overlay. All the actual targeting logic lives in App.tsx
+    // (lib/engineOut.ts); this button just toggles it.
+    const EngineOutControl = L.Control.extend({
+      onAdd: function () {
+        const btn = L.DomUtil.create('button', 'map-engineout-btn')
+        btn.type = 'button'
+        btn.innerHTML = '&#9888;'
+        btn.title = 'Engine out — direct to nearest reachable field'
+        L.DomEvent.disableClickPropagation(btn)
+        btn.onclick = () => onToggleEngineOutRef.current?.()
+        engineOutBtnRef.current = btn
+        return btn
+      }
+    })
+    new EngineOutControl({ position: 'topleft' }).addTo(map)
+
     // Manually panning the map means the pilot wants to look elsewhere —
     // drop out of follow mode rather than keep fighting their drag on the
     // next GPS update, matching how phone nav apps behave.
@@ -352,6 +387,7 @@ export default function RouteMap({
     historyLayerRef.current = L.layerGroup().addTo(map)
     liveGlideLayerRef.current = L.layerGroup().addTo(map)
     directToLayerRef.current = L.layerGroup().addTo(map)
+    engineOutLayerRef.current = L.layerGroup().addTo(map)
 
     // Every curated strip is shown on the map at all times, not just ones
     // in the current route — this list never changes at runtime, so it's
@@ -384,6 +420,7 @@ export default function RouteMap({
       historyLayerRef.current = null
       liveGlideLayerRef.current = null
       directToLayerRef.current = null
+      engineOutLayerRef.current = null
     }
   }, [])
 
@@ -535,6 +572,58 @@ export default function RouteMap({
     L.polyline(latLngs, { color: '#ff3b3b', weight: 4, opacity: 1, dashArray: '2 10' }).addTo(layer)
   }, [livePosition, directTo])
 
+  // Engine-out mode: a heavier, more alarming line to the targeted
+  // airfield (distinct from the manual direct-to line above), plus the
+  // unverified OSM fields/roads reference layer. Neither is auto-selected
+  // as a target beyond the one curated strip — the fields/roads are purely
+  // visual, see lib/engineOut.ts for exactly what they don't account for.
+  useEffect(() => {
+    const layer = engineOutLayerRef.current
+    if (!layer) return
+    layer.clearLayers()
+    if (!livePosition || !engineOutActive) return
+
+    if (engineOutTarget) {
+      const { strip, distanceNm: targetDistanceNm, marginFt } = engineOutTarget
+      const latLngs: L.LatLngTuple[] = [
+        [livePosition.lat, livePosition.lon],
+        [strip.lat, strip.lon]
+      ]
+      L.polyline(latLngs, { color: '#0d1117', weight: 9, opacity: 0.75 }).addTo(layer)
+      L.polyline(latLngs, { color: '#ff2e2e', weight: 5, opacity: 1, dashArray: '3 8' }).addTo(layer)
+      L.marker([strip.lat, strip.lon], {
+        icon: L.divIcon({
+          className: 'map-engineout-target-icon',
+          html: '<div class="map-engineout-target-dot">&#9888;</div>',
+          iconSize: [30, 30],
+          iconAnchor: [15, 15]
+        }),
+        zIndexOffset: 900
+      })
+        .bindTooltip(`${strip.name} — ${targetDistanceNm.toFixed(1)} nm, ${Math.round(marginFt)} ft margin`, {
+          permanent: true,
+          direction: 'top',
+          className: 'map-engineout-tooltip'
+        })
+        .addTo(layer)
+    }
+
+    ;(engineOutSites ?? []).forEach((site) => {
+      const latLngs = site.points.map((p) => [p.lat, p.lon] as L.LatLngTuple)
+      if (site.kind === 'field') {
+        L.polygon(latLngs, {
+          color: '#ffb703',
+          weight: 1.5,
+          fillColor: '#ffb703',
+          fillOpacity: 0.12,
+          dashArray: '4 4'
+        }).addTo(layer)
+      } else {
+        L.polyline(latLngs, { color: '#ffb703', weight: 2, opacity: 0.6, dashArray: '2 6' }).addTo(layer)
+      }
+    })
+  }, [livePosition, engineOutActive, engineOutTarget, engineOutSites])
+
   // Traffic pattern overlay — its own layer so it redraws independently of
   // waypoint edits/drags.
   useEffect(() => {
@@ -649,6 +738,10 @@ export default function RouteMap({
     infoBtnRef.current?.classList.toggle('active', showInfoDrawer)
   }, [showInfoDrawer])
 
+  useEffect(() => {
+    engineOutBtnRef.current?.classList.toggle('active', engineOutActive)
+  }, [engineOutActive])
+
   // Rotates the whole map to the manually-chosen direction, by CSS-rotating
   // the container itself — tiles and markers (including the live plane
   // icon) all turn together. Driven entirely by the rotate knob below, not
@@ -743,6 +836,7 @@ export default function RouteMap({
   return (
     <div ref={wrapRef} className="route-map-wrap">
       <div ref={containerRef} className="route-map" />
+      {engineOutError && <div className="map-engineout-error">{engineOutError}</div>}
       {livePosition && (
         <div className="map-hud">
           {livePosition.speedKt !== undefined && (
@@ -791,6 +885,20 @@ export default function RouteMap({
                 </button>
               )
             })()}
+          {engineOutActive && (
+            <button
+              type="button"
+              className="map-hud-item map-hud-engineout"
+              onClick={onToggleEngineOut}
+              title="Cancel engine-out"
+            >
+              <span className="map-hud-label">&#9888; ENGINE OUT</span>
+              {engineOutTarget
+                ? `${engineOutTarget.strip.name} · ${engineOutTarget.distanceNm.toFixed(1)} nm · ${Math.round(engineOutTarget.marginFt)} ft margin`
+                : 'No airfield in glide range — assess terrain visually'}
+              {engineOutLoading && ' · loading sites…'} &times;
+            </button>
+          )}
         </div>
       )}
       <RotateKnob rotationDeg={rotationDeg} onChange={setRotationDeg} />

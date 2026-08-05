@@ -1,6 +1,6 @@
 import type { Wind } from './wind'
 
-const FT_PER_NM = 6076.12
+export const FT_PER_NM = 6076.12
 
 export interface GlideResult {
   radiusNm: number // still-air glide distance — this sets the circle radius, and is unaffected by wind

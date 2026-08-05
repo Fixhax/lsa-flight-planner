@@ -1722,6 +1722,59 @@ button:focus-visible {
   color: var(--bg);
 }
 
+.map-engineout-btn {
+  width: 44px;
+  height: 44px;
+  background: var(--panel-raised);
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #ff6b35;
+}
+
+.map-engineout-btn:hover {
+  background: var(--panel);
+}
+
+.map-engineout-btn.active {
+  background: #ff2e2e;
+  color: #fff;
+}
+
+.map-engineout-error {
+  position: absolute;
+  left: 10px;
+  top: 60px;
+  z-index: 700;
+  max-width: min(280px, calc(100% - 20px));
+  padding: 8px 12px;
+  background: rgba(255, 46, 46, 0.92);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+.map-engineout-target-dot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #ff2e2e;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  border: 2px solid #0d1117;
+}
+
+.map-engineout-tooltip {
+  background: rgba(13, 17, 23, 0.85) !important;
+  color: #fff !important;
+  border: 1px solid #ff2e2e !important;
+  font-size: 0.72rem !important;
+}
+
 /* Collapsible drawer opened from the info button — a floating panel over
    the map itself so nearby frequencies/airspace are reachable without
    leaving the Route & map view. */
@@ -1890,6 +1943,26 @@ button:focus-visible {
 
 .map-hud-directto:hover {
   color: #ff6b6b;
+}
+
+.map-hud-engineout {
+  pointer-events: auto;
+  background: rgba(255, 46, 46, 0.16);
+  border: 1px solid #ff2e2e;
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: #ff6b6b;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.map-hud-engineout:hover {
+  background: rgba(255, 46, 46, 0.28);
+}
+
+.map-hud-engineout .map-hud-label {
+  color: #ff2e2e;
 }
 
 .map-rotate-knob {

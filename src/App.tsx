@@ -21,6 +21,8 @@ import {
 } from './lib/units'
 import { computeWeight, FUEL_DENSITY_KG_PER_L } from './lib/weight'
 import { computeGlide } from './lib/glide'
+import { fetchGroundElevationFt } from './lib/terrain'
+import { findReachableAirfields, fetchUnverifiedLandingSites, type EngineOutTarget, type UnverifiedSite } from './lib/engineOut'
 import GlideSummary from './components/GlideSummary'
 import WeatherFetch from './components/WeatherFetch'
 import DaylightInfo from './components/DaylightInfo'
@@ -247,6 +249,12 @@ export default function App() {
 
   const [livePosition, setLivePosition] = useState<LivePosition | null>(null)
   const [liveStatus, setLiveStatus] = useState<string | null>(null)
+  const [groundElevationFt, setGroundElevationFt] = useState<number | null>(null)
+  const [engineOutActive, setEngineOutActive] = useState(false)
+  const [engineOutTarget, setEngineOutTarget] = useState<EngineOutTarget | null>(null)
+  const [engineOutSites, setEngineOutSites] = useState<UnverifiedSite[] | null>(null)
+  const [engineOutLoading, setEngineOutLoading] = useState(false)
+  const [engineOutError, setEngineOutError] = useState<string | null>(null)
   const [timerStatus, setTimerStatus] = useState<string | null>(null)
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['aircraft']))
   // Which category tab is showing in the Aircraft panel's picker — synced
@@ -271,6 +279,26 @@ export default function App() {
 
   const timer = useFlightTimer(setTimerStatus)
   const gps = useGpsTracking(setLivePosition, setLiveStatus)
+
+  // Ground elevation under the aircraft's current GPS position, refetched
+  // when it's moved more than 1nm from the last lookup (or that lookup is
+  // over 30s stale) — frequent enough to track terrain changes without
+  // hammering the free elevation API on every single GPS tick. Feeds the
+  // AGL correction below; left at null (falls back to raw AMSL altitude,
+  // see liveGlide) whenever the lookup hasn't resolved yet or fails.
+  const lastTerrainFetchRef = useRef<{ lat: number; lon: number; time: number } | null>(null)
+  useEffect(() => {
+    if (!livePosition) return
+    const last = lastTerrainFetchRef.current
+    const now = Date.now()
+    const movedNm = last ? distanceNm(last, livePosition) : Infinity
+    const staleMs = last ? now - last.time : Infinity
+    if (movedNm < 1 && staleMs < 30000) return
+    lastTerrainFetchRef.current = { lat: livePosition.lat, lon: livePosition.lon, time: now }
+    fetchGroundElevationFt(livePosition).then((ft) => {
+      if (ft !== null) setGroundElevationFt(ft)
+    })
+  }, [livePosition])
 
   // Records a GPS breadcrumb trail for the current leg — only while
   // actually airborne (between the takeoff and landing button presses), so
@@ -446,24 +474,91 @@ export default function App() {
     [cruiseAltitudeFt, aircraft.glideRatio, aircraft.bestGlideSpeedKt, wind]
   )
 
-  // Same model, but using the GPS's actual reported altitude while flying
-  // instead of the planned cruise altitude — falls back to the planned
-  // figure when GPS is off or the device doesn't report altitude (not all
-  // do). Drives the single live glide-range circle on the map; the
-  // planning circles at each waypoint (from `glide` above) keep using the
-  // planned altitude regardless.
+  // Height above ground, not sea level — raw GPS altitude alone overstates
+  // glide range wherever terrain sits well above sea level (a real gap
+  // over Norwegian mountains). undefined whenever the terrain lookup
+  // hasn't resolved yet, in which case liveGlide below falls back to raw
+  // AMSL altitude, same as before this existed.
+  const liveAglFt =
+    livePosition?.altitudeFt !== undefined && groundElevationFt !== null
+      ? Math.max(0, livePosition.altitudeFt - groundElevationFt)
+      : undefined
+
+  // Same model, but using the aircraft's actual current height (AGL when
+  // terrain data is available, else raw GPS altitude, else the planned
+  // cruise altitude) instead of the planned cruise altitude. Drives the
+  // single live glide-range circle on the map, and the engine-out
+  // targeting below; the planning circles at each waypoint (from `glide`
+  // above) keep using the planned altitude regardless.
   const liveGlide = useMemo(
     () =>
       aircraft.glideRatio !== undefined && aircraft.bestGlideSpeedKt !== undefined
         ? computeGlide(
-            livePosition?.altitudeFt ?? cruiseAltitudeFt,
+            liveAglFt ?? livePosition?.altitudeFt ?? cruiseAltitudeFt,
             aircraft.glideRatio,
             aircraft.bestGlideSpeedKt,
             wind
           )
         : undefined,
-    [livePosition?.altitudeFt, cruiseAltitudeFt, aircraft.glideRatio, aircraft.bestGlideSpeedKt, wind]
+    [liveAglFt, livePosition?.altitudeFt, cruiseAltitudeFt, aircraft.glideRatio, aircraft.bestGlideSpeedKt, wind]
   )
+
+  // Recomputed reactively (cheap, local) as the aircraft moves while
+  // engine-out mode is active — always picks the nearest curated strip
+  // still inside the current glide footprint.
+  useEffect(() => {
+    if (!engineOutActive || !livePosition || !liveGlide || liveGlide.radiusNm <= 0) {
+      if (engineOutActive) setEngineOutTarget(null)
+      return
+    }
+    const targets = findReachableAirfields(livePosition, liveGlide, airstrips)
+    setEngineOutTarget(targets[0] ?? null)
+  }, [engineOutActive, livePosition, liveGlide])
+
+  // Unverified fields/roads overlay — fetched once per activation (not on
+  // every GPS tick) to avoid hammering the free Overpass API; a manual
+  // toggle-off-then-on refreshes it.
+  useEffect(() => {
+    if (!engineOutActive || !livePosition || !liveGlide) return
+    let cancelled = false
+    setEngineOutLoading(true)
+    fetchUnverifiedLandingSites(livePosition, liveGlide.maxReachNm)
+      .then((sites) => {
+        if (!cancelled) setEngineOutSites(sites)
+      })
+      .catch(() => {
+        if (!cancelled) setEngineOutSites(null)
+      })
+      .finally(() => {
+        if (!cancelled) setEngineOutLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+    // Deliberately only re-runs when engine-out is toggled, not on every
+    // position update within an already-active session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engineOutActive])
+
+  function handleToggleEngineOut() {
+    if (engineOutActive) {
+      setEngineOutActive(false)
+      setEngineOutTarget(null)
+      setEngineOutSites(null)
+      setEngineOutError(null)
+      return
+    }
+    if (!livePosition) {
+      setEngineOutError('GPS is off — turn on live tracking first.')
+      return
+    }
+    if (aircraft.glideRatio === undefined || aircraft.bestGlideSpeedKt === undefined) {
+      setEngineOutError(`No glide data for ${aircraft.displayName}.`)
+      return
+    }
+    setEngineOutError(null)
+    setEngineOutActive(true)
+  }
 
   function updateWaypoint(id: string, patch: Partial<Waypoint>) {
     setWaypoints((prev) => prev.map((w) => (w.id === id ? { ...w, ...patch } : w)))
@@ -752,7 +847,16 @@ export default function App() {
       <section className="panel" style={{ display: openSections.has('glide') ? undefined : 'none' }}>
         <p className="panel-label">Glide range (engine-out)</p>
         {glide ? (
-          <GlideSummary glide={glide} altitudeFt={cruiseAltitudeFt} />
+          <>
+            <GlideSummary glide={glide} altitudeFt={cruiseAltitudeFt} />
+            {livePosition && (
+              <p className="empty-hint">
+                {liveAglFt !== undefined
+                  ? `Live circle uses ${Math.round(liveAglFt)} ft above ground (terrain-corrected).`
+                  : 'Live circle uses raw GPS altitude — terrain lookup unavailable, so this may overstate range over high ground.'}
+              </p>
+            )}
+          </>
         ) : (
           <p className="empty-hint">
             No published glide-ratio figure for {aircraft.displayName} — a fixed-wing L/D glide
@@ -781,6 +885,12 @@ export default function App() {
           fullscreen={isMapFullscreen}
           onToggleFullscreen={() => setIsMapFullscreen((f) => !f)}
           historyTrack={selectedHistoryTrack?.points ?? null}
+          engineOutActive={engineOutActive}
+          engineOutTarget={engineOutTarget}
+          engineOutSites={engineOutSites}
+          engineOutLoading={engineOutLoading}
+          engineOutError={engineOutError}
+          onToggleEngineOut={handleToggleEngineOut}
         />
         <div className="pattern-controls">
           <p className="panel-sublabel">Landing pattern overlay</p>
