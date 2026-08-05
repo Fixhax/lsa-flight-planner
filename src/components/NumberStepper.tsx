@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 
 interface Props {
   id?: string
@@ -59,15 +59,34 @@ export default function NumberStepper({
 
   useEffect(() => stopRepeat, [])
 
+  // Pointer capture matters here — without it, the slight finger drift
+  // that's normal during a touch tap can move the pointer just outside the
+  // button's hit area mid-press, firing pointerleave and cancelling the
+  // bump before it registers (the map's rotate knob does the same thing
+  // for the same reason). Capturing pins all subsequent events from this
+  // pointer to this button regardless of exactly where the finger drifts.
+  function handleDown(delta: number) {
+    return (e: ReactPointerEvent<HTMLButtonElement>) => {
+      e.currentTarget.setPointerCapture(e.pointerId)
+      startRepeat(delta)
+    }
+  }
+
+  function handleUp(e: ReactPointerEvent<HTMLButtonElement>) {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+    stopRepeat()
+  }
+
   return (
     <div className="number-stepper">
       <button
         type="button"
         className="number-stepper-btn"
-        onPointerDown={() => startRepeat(-step)}
-        onPointerUp={stopRepeat}
-        onPointerLeave={stopRepeat}
-        onPointerCancel={stopRepeat}
+        onPointerDown={handleDown(-step)}
+        onPointerUp={handleUp}
+        onPointerCancel={handleUp}
         disabled={min !== undefined && value <= min}
         aria-label={ariaLabel ? `Decrease ${ariaLabel}` : 'Decrease'}
       >
@@ -86,10 +105,9 @@ export default function NumberStepper({
       <button
         type="button"
         className="number-stepper-btn"
-        onPointerDown={() => startRepeat(step)}
-        onPointerUp={stopRepeat}
-        onPointerLeave={stopRepeat}
-        onPointerCancel={stopRepeat}
+        onPointerDown={handleDown(step)}
+        onPointerUp={handleUp}
+        onPointerCancel={handleUp}
         disabled={max !== undefined && value >= max}
         aria-label={ariaLabel ? `Increase ${ariaLabel}` : 'Increase'}
       >

@@ -126,11 +126,24 @@ button:focus-visible {
 
 .wind-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
+}
+
+.wind-row > .field {
+  /* Lets 3-column rows (e.g. Pilot/Passenger/Luggage) wrap to two lines on
+     narrow screens instead of squeezing every column below a usable width. */
+  min-width: 90px;
 }
 
 .field {
   flex: 1;
+  /* Without this, a flex item's default min-width is auto — bounded by
+     its content's intrinsic size (e.g. a <select>'s widest <option>, or a
+     number-stepper's buttons+input) — which was pushing fields like Empty
+     weight/Luggage wider than their column and off the edge of the app on
+     narrow screens instead of letting them shrink to fit. */
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -164,12 +177,19 @@ button:focus-visible {
 
 .field input,
 .field select {
+  width: 100%;
+  /* A <select> otherwise sizes itself to its widest <option> text in some
+     browsers regardless of its flex parent's width — long MTOW category
+     labels (e.g. the AW109E's) were forcing this, and the row, wider than
+     the screen. */
+  max-width: 100%;
   background: var(--panel-raised);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px;
   font-family: var(--font-mono);
   font-size: 1rem;
+  box-sizing: border-box;
 }
 
 /* Weight/altitude/speed/quantity fields — tap +/- to bump the value
