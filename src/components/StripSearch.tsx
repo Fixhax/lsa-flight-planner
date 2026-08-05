@@ -54,7 +54,7 @@ export default function StripSearch({ onSelect }: Props) {
           />
           <div className="strip-search-results">
             {matches.length === 0 && (
-              <div className="strip-search-empty">No matches in the starter list.</div>
+              <div className="strip-search-empty">No matches in the curated list.</div>
             )}
             {matches.map((s) => (
               <button
