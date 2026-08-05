@@ -21,6 +21,15 @@ export const ctsw: AircraftProfile = {
 
   emptyWeightKg: 270,
   maxTakeoffWeightKg: 600,
+  // Per user: all three standard Norwegian microlight/LSA registration
+  // weight categories should be selectable for every airplane in this app —
+  // which one actually applies is about how a given airframe is
+  // registered/equipped, not the aircraft type itself.
+  mtowCategoriesKg: [
+    { weightKg: 450, label: '450 kg (microlight)' },
+    { weightKg: 560, label: '560 kg' },
+    { weightKg: 600, label: '600 kg (LSA/ultralight)' }
+  ],
 
   glideRatio: 14.1, // published CTSW glide ratio, 1:14.1
   bestGlideSpeedKt: 63, // per POH

@@ -32,8 +32,14 @@ export const savannahS: AircraftProfile = {
 
   emptyWeightKg: 286,
   maxTakeoffWeightKg: 450,
+  // Per user: all three standard Norwegian microlight/LSA registration
+  // weight categories should be selectable for every airplane in this app,
+  // not just the ones a specific model's own published spec mentions —
+  // which category actually applies is about how a given airframe is
+  // registered/equipped, not the aircraft type itself.
   mtowCategoriesKg: [
     { weightKg: 450, label: '450 kg (microlight)' },
+    { weightKg: 560, label: '560 kg' },
     { weightKg: 600, label: '600 kg (LSA/ultralight)' }
   ],
 

@@ -23,6 +23,15 @@ export const ransS6: AircraftProfile = {
 
   emptyWeightKg: 317, // ~700 lb, LSA-category 912ULS build
   maxTakeoffWeightKg: 600,
+  // Per user: all three standard Norwegian microlight/LSA registration
+  // weight categories should be selectable for every airplane in this app —
+  // which one actually applies is about how a given airframe is
+  // registered/equipped, not the aircraft type itself.
+  mtowCategoriesKg: [
+    { weightKg: 450, label: '450 kg (microlight)' },
+    { weightKg: 560, label: '560 kg' },
+    { weightKg: 600, label: '600 kg (LSA/ultralight)' }
+  ],
 
   glideRatio: 9, // published glide ratio for the 912-series-powered S-6, 1:9
   bestGlideSpeedKt: 43, // 50 mph per POH, converted to knots

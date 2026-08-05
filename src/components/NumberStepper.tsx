@@ -13,9 +13,6 @@ interface Props {
 
 // A number input with +/- buttons, so weight/altitude/speed/quantity
 // fields can be bumped by tapping instead of clearing and retyping.
-// Holding a button down repeats it (starts after a short delay, then
-// keeps going) — a plain single-step tap would take far too many taps to
-// move something like cruise altitude any meaningful distance.
 export default function NumberStepper({
   id,
   value,
@@ -30,6 +27,7 @@ export default function NumberStepper({
   valueRef.current = value
   const repeatTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const didRepeatRef = useRef(false)
 
   function clamp(v: number) {
     const scale = 10 ** decimals
@@ -43,13 +41,6 @@ export default function NumberStepper({
     onChange(clamp(valueRef.current + delta))
   }
 
-  function startRepeat(delta: number) {
-    bump(delta)
-    repeatTimeoutRef.current = setTimeout(() => {
-      repeatIntervalRef.current = setInterval(() => bump(delta), 90)
-    }, 450)
-  }
-
   function stopRepeat() {
     if (repeatTimeoutRef.current) clearTimeout(repeatTimeoutRef.current)
     if (repeatIntervalRef.current) clearInterval(repeatIntervalRef.current)
@@ -59,20 +50,37 @@ export default function NumberStepper({
 
   useEffect(() => stopRepeat, [])
 
-  // Pointer capture matters here — without it, the slight finger drift
-  // that's normal during a touch tap can move the pointer just outside the
-  // button's hit area mid-press, firing pointerleave and cancelling the
-  // bump before it registers (the map's rotate knob does the same thing
-  // for the same reason). Capturing pins all subsequent events from this
-  // pointer to this button regardless of exactly where the finger drifts.
-  function handleDown(delta: number) {
-    return (e: ReactPointerEvent<HTMLButtonElement>) => {
-      e.currentTarget.setPointerCapture(e.pointerId)
-      startRepeat(delta)
+  // The single-step tap is handled by plain onClick — the most reliable
+  // way to detect "the user tapped this" across browsers/devices, with
+  // none of the touch-tracking edge cases pointer events can have (and
+  // the same event type every other button in this app already relies
+  // on). Holding the button down additionally starts a repeat, after a
+  // short delay, via pointer events; when that's happened, the click that
+  // fires on release is suppressed so releasing a long press doesn't also
+  // add one extra step on top of what the repeat already did.
+  function handleClick(delta: number) {
+    return () => {
+      if (didRepeatRef.current) {
+        didRepeatRef.current = false
+        return
+      }
+      bump(delta)
     }
   }
 
-  function handleUp(e: ReactPointerEvent<HTMLButtonElement>) {
+  function handlePointerDown(delta: number) {
+    return (e: ReactPointerEvent<HTMLButtonElement>) => {
+      e.currentTarget.setPointerCapture(e.pointerId)
+      didRepeatRef.current = false
+      repeatTimeoutRef.current = setTimeout(() => {
+        didRepeatRef.current = true
+        bump(delta)
+        repeatIntervalRef.current = setInterval(() => bump(delta), 90)
+      }, 450)
+    }
+  }
+
+  function handlePointerUp(e: ReactPointerEvent<HTMLButtonElement>) {
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId)
     }
@@ -84,9 +92,10 @@ export default function NumberStepper({
       <button
         type="button"
         className="number-stepper-btn"
-        onPointerDown={handleDown(-step)}
-        onPointerUp={handleUp}
-        onPointerCancel={handleUp}
+        onClick={handleClick(-step)}
+        onPointerDown={handlePointerDown(-step)}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         disabled={min !== undefined && value <= min}
         aria-label={ariaLabel ? `Decrease ${ariaLabel}` : 'Decrease'}
       >
@@ -105,9 +114,10 @@ export default function NumberStepper({
       <button
         type="button"
         className="number-stepper-btn"
-        onPointerDown={handleDown(step)}
-        onPointerUp={handleUp}
-        onPointerCancel={handleUp}
+        onClick={handleClick(step)}
+        onPointerDown={handlePointerDown(step)}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         disabled={max !== undefined && value >= max}
         aria-label={ariaLabel ? `Increase ${ariaLabel}` : 'Increase'}
       >
