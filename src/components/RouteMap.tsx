@@ -18,6 +18,7 @@ interface Props {
   liveGlide?: GlideResult // single circle around the live position, based on actual GPS altitude
   livePosition?: LivePosition | null
   fuelBurnLph?: number // aircraft's cruise fuel burn, for the estimated-fuel-used figure on the direct-to badge
+  cruiseSpeedKt?: number // fallback ground speed for the direct-to ETA/fuel estimate when live GPS speed isn't usable
   visible?: boolean // pass false while the containing panel is display:none
   pattern?: TrafficPatternResult | null
   fullscreen?: boolean
@@ -92,6 +93,7 @@ export default function RouteMap({
   liveGlide,
   livePosition,
   fuelBurnLph,
+  cruiseSpeedKt,
   visible = true,
   pattern,
   fullscreen = false,
@@ -435,10 +437,10 @@ export default function RouteMap({
         const center = destinationPoint(wp, glide.downwindBearingDeg, glide.driftNm)
         L.circle([center.lat, center.lon], {
           radius: glide.radiusNm * 1852, // nm to metres
-          color: '#f2a93b',
-          weight: 1.5,
-          fillColor: '#f2a93b',
-          fillOpacity: 0.06,
+          color: '#ffb703',
+          weight: 2.5,
+          fillColor: '#ffb703',
+          fillOpacity: 0.14,
           dashArray: '4 4'
         }).addTo(layerGroup)
       }
@@ -499,10 +501,10 @@ export default function RouteMap({
     const center = destinationPoint(livePosition, liveGlide.downwindBearingDeg, liveGlide.driftNm)
     L.circle([center.lat, center.lon], {
       radius: liveGlide.radiusNm * 1852, // nm to metres
-      color: '#f2a93b',
-      weight: 1.5,
-      fillColor: '#f2a93b',
-      fillOpacity: 0.06,
+      color: '#ffb703',
+      weight: 2.5,
+      fillColor: '#ffb703',
+      fillOpacity: 0.14,
       dashArray: '4 4'
     }).addTo(liveGlideLayer)
   }, [livePosition, liveGlide])
@@ -515,22 +517,22 @@ export default function RouteMap({
 
   // Draws (and keeps redrawing, following the aircraft) a dashed guidance
   // line from the live position straight to the "direct to" target picked
-  // from the long-press menu. Distinct sky-blue so it doesn't get confused
-  // with the cyan planned route, amber glide circles, or purple history
-  // track.
+  // from the long-press menu. Bright red-orange, with a dark casing
+  // underneath (same trick as the route line and pattern legs) so it stays
+  // readable against any base tile — distinct from the cyan planned route,
+  // amber glide circles, magenta live marker, and purple history track.
   useEffect(() => {
     const layer = directToLayerRef.current
     if (!layer) return
     layer.clearLayers()
     if (!livePosition || !directTo) return
 
-    L.polyline(
-      [
-        [livePosition.lat, livePosition.lon],
-        [directTo.lat, directTo.lon]
-      ],
-      { color: '#38bdf8', weight: 3, opacity: 0.9, dashArray: '8 6' }
-    ).addTo(layer)
+    const latLngs: L.LatLngTuple[] = [
+      [livePosition.lat, livePosition.lon],
+      [directTo.lat, directTo.lon]
+    ]
+    L.polyline(latLngs, { color: '#0d1117', weight: 7, opacity: 0.6 }).addTo(layer)
+    L.polyline(latLngs, { color: '#ff3b3b', weight: 4, opacity: 1, dashArray: '2 10' }).addTo(layer)
   }, [livePosition, directTo])
 
   // Traffic pattern overlay — its own layer so it redraws independently of
@@ -758,11 +760,17 @@ export default function RouteMap({
           {directTo &&
             (() => {
               const directDistanceNm = distanceNm(livePosition, directTo)
-              // Ignore near-zero/noisy GPS speed rather than showing a
-              // wildly inflated or negative-feeling ETA while stationary.
+              // Ignore near-zero/noisy GPS speed rather than trusting it for
+              // ETA/fuel — fall back to planned cruise speed instead (same
+              // approach the Live tracking panel's ETA already uses), so
+              // this doesn't just silently disappear whenever GPS speed
+              // isn't usable (no fix on speed yet, or stationary on the
+              // ground while testing).
+              const usingGpsSpeed = livePosition.speedKt !== undefined && livePosition.speedKt > 5
+              const groundSpeedKt = usingGpsSpeed ? livePosition.speedKt! : cruiseSpeedKt
               const etaMin =
-                livePosition.speedKt !== undefined && livePosition.speedKt > 5
-                  ? Math.round((directDistanceNm / livePosition.speedKt) * 60)
+                groundSpeedKt !== undefined && groundSpeedKt > 0
+                  ? Math.round((directDistanceNm / groundSpeedKt) * 60)
                   : null
               // Estimated, not measured — time-based off the aircraft's
               // cruise burn rate, same approach the nav log uses per leg.
@@ -778,7 +786,7 @@ export default function RouteMap({
                 >
                   <span className="map-hud-label">DIRECT</span>
                   {directDistanceNm.toFixed(1)} nm
-                  {etaMin !== null && ` · ${etaMin} min`}
+                  {etaMin !== null && ` · ${etaMin} min${usingGpsSpeed ? '' : ' (planned)'}`}
                   {fuelUsedL !== null && ` · ${fuelUsedL.toFixed(1)} L`} &times;
                 </button>
               )

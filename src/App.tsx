@@ -767,6 +767,7 @@ export default function App() {
           liveGlide={liveGlide}
           livePosition={livePosition}
           fuelBurnLph={aircraft.fuelBurnLph}
+          cruiseSpeedKt={cruiseSpeedKt}
           visible={openSections.has('route') || isMapFullscreen}
           pattern={trafficPattern}
           fullscreen={isMapFullscreen}

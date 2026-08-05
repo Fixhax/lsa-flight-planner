@@ -1807,14 +1807,14 @@ button:focus-visible {
   pointer-events: auto;
   background: none;
   border: none;
-  color: #38bdf8;
+  color: #ff3b3b;
   font: inherit;
   cursor: pointer;
   padding: 0;
 }
 
 .map-hud-directto:hover {
-  color: #7dd3fc;
+  color: #ff6b6b;
 }
 
 .map-rotate-knob {
