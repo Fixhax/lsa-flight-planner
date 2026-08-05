@@ -11,10 +11,14 @@ export default async function handler(req, res) {
   const query = typeof req.body === 'string' ? req.body : JSON.stringify(req.body ?? '')
 
   try {
+    // Overpass's interpreter endpoint expects the query as a form-encoded
+    // "data" field, not a raw text/plain body — sending it as plain text
+    // got a 406 (and, separately, its public instance rate-limits fairly
+    // aggressively per IP, which shows up as a "rate_limited" error in the
+    // response body rather than an HTTP error code).
     const upstream = await fetch('https://overpass-api.de/api/interpreter', {
       method: 'POST',
-      body: query,
-      headers: { 'content-type': 'text/plain' },
+      body: new URLSearchParams({ data: query }),
       signal: AbortSignal.timeout(20000)
     })
     const body = await upstream.text()
