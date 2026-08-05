@@ -42,10 +42,16 @@ import FlightHistory from './components/FlightHistory'
 import Help from './components/Help'
 import AttitudeIndicator from './components/AttitudeIndicator'
 
-let nextId = 1
+// crypto.randomUUID() rather than an incrementing counter — a counter
+// resets to 1 on every page load, while persisted waypoints (loaded back
+// from localStorage or the cloud) keep whatever ids they were created
+// with. A returning session could then mint new waypoints with ids that
+// collide with existing ones, which broke id-based lookups like the map's
+// midpoint-drag-handle insert (waypoints.findIndex by id) and duplicated
+// React list keys.
 function makeWaypoint(strip?: AirstripEntry): Waypoint {
   return {
-    id: `wp-${nextId++}`,
+    id: crypto.randomUUID(),
     name: strip ? (strip.icao ? `${strip.name} (${strip.icao})` : strip.name) : '',
     lat: strip?.lat ?? 0,
     lon: strip?.lon ?? 0,
@@ -462,8 +468,17 @@ export default function App() {
     })
   }
 
+  // Inserts just before the current last waypoint rather than appending
+  // after it, so this stays consistent with the map's long-press "Add
+  // waypoint here" — the destination stays pinned as the last waypoint
+  // instead of being pushed down by each new blank one.
   function addWaypoint() {
-    setWaypoints((prev) => [...prev, makeWaypoint()])
+    setWaypoints((prev) => {
+      if (prev.length < 2) return [...prev, makeWaypoint()]
+      const next = [...prev]
+      next.splice(next.length - 1, 0, makeWaypoint())
+      return next
+    })
   }
 
   function removeWaypoint(id: string) {
