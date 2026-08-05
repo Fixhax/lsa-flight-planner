@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     res.status(upstream.status)
     res.setHeader('content-type', 'application/json')
     res.send(body)
-  } catch {
-    res.status(502).json({ error: 'Could not reach Overpass' })
+  } catch (e) {
+    res.status(502).json({ error: 'Could not reach Overpass', detail: e instanceof Error ? `${e.name}: ${e.message}` : String(e) })
   }
 }
