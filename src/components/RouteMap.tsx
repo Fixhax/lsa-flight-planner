@@ -803,6 +803,19 @@ export default function RouteMap({
           <button
             type="button"
             onClick={() => {
+              // afterIndex -1 splices at index 0 — becomes the new first
+              // waypoint, pushing the rest of the route after it. Lets you
+              // plan a route by tapping your departure point first, then
+              // adding the rest afterward with "Add waypoint here".
+              onInsertWaypoint(-1, longPressMenu.lat, longPressMenu.lon)
+              setLongPressMenu(null)
+            }}
+          >
+            &#128747; Set as start
+          </button>
+          <button
+            type="button"
+            onClick={() => {
               if (livePosition) {
                 // GPS is on: draw a live guidance line from wherever the
                 // aircraft actually is to this point, rather than editing
