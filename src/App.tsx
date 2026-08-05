@@ -672,6 +672,20 @@ export default function App() {
     })
   }
 
+  // Same insertion positions as insertWaypoint above, but carrying the
+  // full curated-strip data (name, ICAO, runway, elevation, frequencies,
+  // PPR contact) rather than bare coordinates — used when a waypoint is
+  // added by tapping a known airfield on the map, so it comes in fully
+  // populated exactly like picking one from the strip-search dropdown does.
+  function insertStripWaypoint(afterIndex: number, strip: AirstripEntry) {
+    pushWaypointHistory()
+    setWaypoints((prev) => {
+      const next = [...prev]
+      next.splice(afterIndex + 1, 0, makeWaypoint(strip))
+      return next
+    })
+  }
+
   function moveWaypoint(id: string, lat: number, lon: number) {
     pushWaypointHistory()
     updateWaypoint(id, { lat, lon })
@@ -937,6 +951,7 @@ export default function App() {
           waypoints={waypoints}
           onMoveWaypoint={moveWaypoint}
           onInsertWaypoint={insertWaypoint}
+          onInsertStrip={insertStripWaypoint}
           onSelectWaypoint={selectWaypoint}
           glide={glide}
           liveGlide={liveGlide}

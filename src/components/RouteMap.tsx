@@ -4,7 +4,7 @@ import type { Waypoint } from '../lib/planning'
 import { destinationPoint, distanceNm } from '../lib/geo'
 import type { GlideResult } from '../lib/glide'
 import type { LivePosition } from '../lib/liveTracking'
-import { airstrips } from '../data/strips'
+import { airstrips, type AirstripEntry } from '../data/strips'
 import type { TrafficPatternResult } from '../lib/trafficPattern'
 import type { EngineOutTarget, UnverifiedSite } from '../lib/engineOut'
 import MapInfoDrawer from './MapInfoDrawer'
@@ -14,6 +14,7 @@ interface Props {
   waypoints: Waypoint[]
   onMoveWaypoint: (id: string, lat: number, lon: number) => void
   onInsertWaypoint: (afterIndex: number, lat: number, lon: number) => void
+  onInsertStrip: (afterIndex: number, strip: AirstripEntry) => void
   onSelectWaypoint: (id: string) => void
   glide?: GlideResult // planning circles at each waypoint, based on planned cruise altitude
   liveGlide?: GlideResult // single circle around the live position, based on actual GPS altitude
@@ -95,6 +96,7 @@ export default function RouteMap({
   waypoints,
   onMoveWaypoint,
   onInsertWaypoint,
+  onInsertStrip,
   onSelectWaypoint,
   glide,
   liveGlide,
@@ -136,6 +138,7 @@ export default function RouteMap({
   const longPressMenuRef = useRef<HTMLDivElement | null>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const longPressStartRef = useRef<{ x: number; y: number } | null>(null)
+  const airfieldPanelRef = useRef<HTMLDivElement | null>(null)
 
   // "Follow me" (re-center on GPS position) and manual map rotation (via
   // the on-map rotate knob) are view-only preferences, kept local to the
@@ -152,6 +155,17 @@ export default function RouteMap({
     screenY: number
     lat: number
     lon: number
+  } | null>(null)
+
+  // Tapping a curated airfield diamond opens this info panel instead of a
+  // plain Leaflet popup, so it can show richer info (frequencies, PPR
+  // contact) and offer the same start/destination/waypoint actions the
+  // long-press menu has, prefilled with everything known about the field
+  // rather than just bare coordinates.
+  const [selectedAirfield, setSelectedAirfield] = useState<{
+    strip: AirstripEntry
+    screenX: number
+    screenY: number
   } | null>(null)
 
   // "Direct to" target, only meaningful while GPS is on — draws a live
@@ -334,6 +348,7 @@ export default function RouteMap({
       if (!wrap) return
       const latlng = map.mouseEventToLatLng({ clientX, clientY } as unknown as MouseEvent)
       const rect = wrap.getBoundingClientRect()
+      setSelectedAirfield(null)
       setLongPressMenu({ screenX: clientX - rect.left, screenY: clientY - rect.top, lat: latlng.lat, lon: latlng.lng })
     }
 
@@ -394,14 +409,14 @@ export default function RouteMap({
     // populated once here rather than in the per-render redraw effect.
     airstrips.forEach((strip) => {
       const marker = L.marker([strip.lat, strip.lon], { icon: airfieldIcon })
-      const meta = [
-        strip.surface,
-        strip.runway ? `rwy ${strip.runway}` : null,
-        strip.lengthM ? `${strip.lengthM}m` : null
-      ]
-        .filter(Boolean)
-        .join(' &middot; ')
-      marker.bindPopup(`<strong>${strip.name}${strip.icao ? ` (${strip.icao})` : ''}</strong><br/>${meta}`)
+      marker.on('click', (e: L.LeafletMouseEvent) => {
+        const wrap = wrapRef.current
+        const orig = e.originalEvent
+        if (!wrap) return
+        const rect = wrap.getBoundingClientRect()
+        setLongPressMenu(null)
+        setSelectedAirfield({ strip, screenX: orig.clientX - rect.left, screenY: orig.clientY - rect.top })
+      })
       marker.addTo(airfieldLayerRef.current!)
     })
 
@@ -425,9 +440,11 @@ export default function RouteMap({
   }, [])
 
   useCloseOnOutsideClick(longPressMenuRef, !!longPressMenu, () => setLongPressMenu(null))
+  useCloseOnOutsideClick(airfieldPanelRef, !!selectedAirfield, () => setSelectedAirfield(null))
 
   useEffect(() => {
     setLongPressMenu(null)
+    setSelectedAirfield(null)
   }, [fullscreen])
 
   // Only the on/off state matters for deciding whether to show the
@@ -977,6 +994,103 @@ export default function RouteMap({
           </button>
         </div>
       )}
+      {selectedAirfield &&
+        (() => {
+          const strip = selectedAirfield.strip
+          return (
+            <div
+              ref={airfieldPanelRef}
+              className="map-airfield-panel"
+              style={{ left: selectedAirfield.screenX, top: selectedAirfield.screenY }}
+            >
+              <button
+                type="button"
+                className="map-airfield-panel-close"
+                aria-label="Close"
+                onClick={() => setSelectedAirfield(null)}
+              >
+                &times;
+              </button>
+              <p className="map-airfield-panel-title">
+                {strip.name}
+                {strip.icao ? ` (${strip.icao})` : ''}
+              </p>
+              {strip.note && <p className="map-airfield-panel-note">{strip.note}</p>}
+              <div className="map-airfield-panel-facts">
+                <div>
+                  <span>Surface</span>
+                  {strip.surface}
+                </div>
+                <div>
+                  <span>Runway</span>
+                  {strip.runway ?? '—'}
+                </div>
+                <div>
+                  <span>Length</span>
+                  {strip.lengthM ? `${strip.lengthM} m` : '—'}
+                </div>
+                <div>
+                  <span>Elevation</span>
+                  {strip.elevationFt !== undefined ? `${strip.elevationFt} ft` : '—'}
+                </div>
+                {strip.customsCleared && (
+                  <div>
+                    <span>Customs</span>
+                    Cleared aerodrome
+                  </div>
+                )}
+              </div>
+              <p className="map-airfield-panel-subhead">Frequencies</p>
+              {strip.frequencies && strip.frequencies.length > 0 ? (
+                strip.frequencies.map((f, i) => (
+                  <p className="map-airfield-panel-freq" key={i}>
+                    {f.type}: {f.mhz.toFixed(3)} MHz{f.note ? ` — ${f.note}` : ''}
+                  </p>
+                ))
+              ) : (
+                <p className="map-airfield-panel-muted">None confirmed/published.</p>
+              )}
+              <p className="map-airfield-panel-subhead">Contact</p>
+              {strip.pprContact ? (
+                <p className="map-airfield-panel-contact">
+                  {strip.pprContact.name} —{' '}
+                  <a href={`tel:${strip.pprContact.phone}`}>{strip.pprContact.phone}</a>
+                </p>
+              ) : (
+                <p className="map-airfield-panel-muted">No contact number on file.</p>
+              )}
+              <div className="map-airfield-panel-actions">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onInsertStrip(-1, strip)
+                    setSelectedAirfield(null)
+                  }}
+                >
+                  &#128747; Set as start
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onInsertStrip(waypoints.length - 1, strip)
+                    setSelectedAirfield(null)
+                  }}
+                >
+                  &#127937; Set destination
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onInsertStrip(waypoints.length - 2, strip)
+                    setSelectedAirfield(null)
+                  }}
+                >
+                  + Add waypoint
+                </button>
+              </div>
+            </div>
+          )
+        })()}
     </div>
   )
 }
