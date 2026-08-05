@@ -17,6 +17,7 @@ interface Props {
   glide?: GlideResult // planning circles at each waypoint, based on planned cruise altitude
   liveGlide?: GlideResult // single circle around the live position, based on actual GPS altitude
   livePosition?: LivePosition | null
+  fuelBurnLph?: number // aircraft's cruise fuel burn, for the estimated-fuel-used figure on the direct-to badge
   visible?: boolean // pass false while the containing panel is display:none
   pattern?: TrafficPatternResult | null
   fullscreen?: boolean
@@ -90,6 +91,7 @@ export default function RouteMap({
   glide,
   liveGlide,
   livePosition,
+  fuelBurnLph,
   visible = true,
   pattern,
   fullscreen = false,
@@ -762,6 +764,11 @@ export default function RouteMap({
                 livePosition.speedKt !== undefined && livePosition.speedKt > 5
                   ? Math.round((directDistanceNm / livePosition.speedKt) * 60)
                   : null
+              // Estimated, not measured — time-based off the aircraft's
+              // cruise burn rate, same approach the nav log uses per leg.
+              // Only shown once there's a real ETA to base it on.
+              const fuelUsedL =
+                etaMin !== null && fuelBurnLph !== undefined ? (etaMin / 60) * fuelBurnLph : null
               return (
                 <button
                   type="button"
@@ -771,7 +778,8 @@ export default function RouteMap({
                 >
                   <span className="map-hud-label">DIRECT</span>
                   {directDistanceNm.toFixed(1)} nm
-                  {etaMin !== null && ` · ${etaMin} min`} &times;
+                  {etaMin !== null && ` · ${etaMin} min`}
+                  {fuelUsedL !== null && ` · ${fuelUsedL.toFixed(1)} L`} &times;
                 </button>
               )
             })()}

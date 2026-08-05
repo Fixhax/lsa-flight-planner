@@ -346,8 +346,19 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usableFuelL])
 
+  // Excludes not-yet-filled-in waypoints (lat/lon both still 0, the
+  // makeWaypoint() default) the same way the map and every other
+  // waypoints-consuming panel already does — otherwise a blank waypoint
+  // left sitting in the list (e.g. the original default pair, after
+  // "Set as start"/"Direct to"/long-press inserts real points around them)
+  // corrupts the whole route: 0°N 0°E is thousands of nm from Norway, so a
+  // leg to/from it blows up distance, time, and fuel burn for the entire
+  // nav log.
   const validWaypoints = useMemo(
-    () => waypoints.filter((w) => Number.isFinite(w.lat) && Number.isFinite(w.lon)),
+    () =>
+      waypoints.filter(
+        (w) => Number.isFinite(w.lat) && Number.isFinite(w.lon) && (w.lat !== 0 || w.lon !== 0)
+      ),
     [waypoints]
   )
 
@@ -740,6 +751,7 @@ export default function App() {
           glide={glide}
           liveGlide={liveGlide}
           livePosition={livePosition}
+          fuelBurnLph={aircraft.fuelBurnLph}
           visible={openSections.has('route') || isMapFullscreen}
           pattern={trafficPattern}
           fullscreen={isMapFullscreen}
