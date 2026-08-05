@@ -24,7 +24,7 @@ async function queryStationsInBox(lat: number, lon: number, latPadDeg: number): 
   // narrower box east-west than north-south this far north.
   const lonPadDeg = latPadDeg / Math.max(0.2, Math.cos((lat * Math.PI) / 180))
   const bbox = `${lat - latPadDeg},${lon - lonPadDeg},${lat + latPadDeg},${lon + lonPadDeg}`
-  const res = await fetch(`https://aviationweather.gov/api/data/metar?bbox=${bbox}&format=json`, {
+  const res = await fetch(`/api/aviation-weather?kind=metar&bbox=${bbox}&format=json`, {
     signal: AbortSignal.timeout(10000)
   })
   if (!res.ok) throw new Error(`Aviation Weather Center returned ${res.status}`)
@@ -53,10 +53,9 @@ export async function fetchNearestStation(lat: number, lon: number): Promise<Nea
 }
 
 async function fetchRaw(kind: 'metar' | 'taf', icao: string): Promise<string | null> {
-  const res = await fetch(
-    `https://aviationweather.gov/api/data/${kind}?ids=${encodeURIComponent(icao)}&format=raw`,
-    { signal: AbortSignal.timeout(10000) }
-  )
+  const res = await fetch(`/api/aviation-weather?kind=${kind}&ids=${encodeURIComponent(icao)}&format=raw`, {
+    signal: AbortSignal.timeout(10000)
+  })
   if (!res.ok) throw new Error(`Aviation Weather Center returned ${res.status}`)
   const text = (await res.text()).trim()
   if (!text) return null

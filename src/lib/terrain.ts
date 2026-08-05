@@ -29,7 +29,7 @@ export async function fetchGroundElevationFt(point: LatLon): Promise<number | nu
 
   try {
     const res = await fetch(
-      `https://api.opentopodata.org/v1/eudem25m?locations=${point.lat.toFixed(5)},${point.lon.toFixed(5)}`,
+      `/api/terrain?locations=${point.lat.toFixed(5)},${point.lon.toFixed(5)}`,
       { signal: AbortSignal.timeout(5000) }
     )
     if (!res.ok) throw new Error(`Open Topo Data returned ${res.status}`)

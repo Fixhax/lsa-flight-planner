@@ -55,7 +55,7 @@ export async function fetchUnverifiedLandingSites(center: LatLon, radiusNm: numb
   const radiusM = Math.round(radiusNm * 1852)
   const query = `[out:json][timeout:15];(way["landuse"~"^(farmland|meadow|grass)$"](around:${radiusM},${center.lat},${center.lon});way["highway"~"^(trunk|primary|secondary)$"](around:${radiusM},${center.lat},${center.lon}););out geom;`
 
-  const res = await fetch('https://overpass-api.de/api/interpreter', {
+  const res = await fetch('/api/overpass', {
     method: 'POST',
     body: query,
     signal: AbortSignal.timeout(15000)
