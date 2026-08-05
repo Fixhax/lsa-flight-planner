@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
+import { useCloseOnOutsideClick } from '../hooks/useCloseOnOutsideClick'
 
 export interface SectionGroup {
   label: string
@@ -15,16 +16,7 @@ export default function SectionMenu({ groups, openSections, onToggle }: Props) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
 
-  useEffect(() => {
-    if (!open) return
-    function handlePointerDown(e: PointerEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('pointerdown', handlePointerDown)
-    return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [open])
+  useCloseOnOutsideClick(containerRef, open, () => setOpen(false))
 
   const openCount = openSections.size
 

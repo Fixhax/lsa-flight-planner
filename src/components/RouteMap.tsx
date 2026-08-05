@@ -7,6 +7,7 @@ import type { LivePosition } from '../lib/liveTracking'
 import { airstrips } from '../data/strips'
 import type { TrafficPatternResult } from '../lib/trafficPattern'
 import MapInfoDrawer from './MapInfoDrawer'
+import { useCloseOnOutsideClick } from '../hooks/useCloseOnOutsideClick'
 
 interface Props {
   waypoints: Waypoint[]
@@ -382,24 +383,7 @@ export default function RouteMap({
     }
   }, [])
 
-  // Closes the menu on an outside tap/click, and whenever the map's
-  // dimensions change in a way that would make its saved screen position
-  // stale (e.g. entering/leaving fullscreen).
-  useEffect(() => {
-    if (!longPressMenu) return
-    function handleOutside(e: PointerEvent) {
-      if (longPressMenuRef.current && !longPressMenuRef.current.contains(e.target as Node)) {
-        setLongPressMenu(null)
-      }
-    }
-    // Deferred so the same press/click that opened the menu doesn't
-    // immediately close it again via this same listener.
-    const id = setTimeout(() => document.addEventListener('pointerdown', handleOutside), 0)
-    return () => {
-      clearTimeout(id)
-      document.removeEventListener('pointerdown', handleOutside)
-    }
-  }, [longPressMenu])
+  useCloseOnOutsideClick(longPressMenuRef, !!longPressMenu, () => setLongPressMenu(null))
 
   useEffect(() => {
     setLongPressMenu(null)

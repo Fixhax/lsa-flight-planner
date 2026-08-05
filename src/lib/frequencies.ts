@@ -197,13 +197,19 @@ export interface NearbyRegionalFrequency extends RegionalFrequency {
   distanceNm: number
 }
 
+// FIS sectors (alwaysShow) bypass the normal radiusNm cutoff since a
+// single-point distance filter can't represent their real coverage area —
+// but that shouldn't mean showing e.g. Polaris Control from clear across
+// the country. This is a separate, larger cap just for those entries.
+const ALWAYS_SHOW_MAX_NM = 100
+
 /**
  * Returns regional/airport frequencies within radiusNm of any of the given
  * points (route waypoints, plus the live GPS position when tracking),
- * nearest first. Entries flagged alwaysShow (large FIS sectors) are
- * included regardless of distance. Pass showAll to bypass the distance
- * filter entirely and return everything, still sorted by distance when
- * points are available.
+ * nearest first. Entries flagged alwaysShow (large FIS sectors) use a wider
+ * cap (see ALWAYS_SHOW_MAX_NM above) instead of radiusNm, but aren't shown
+ * unconditionally. Pass showAll to bypass every distance filter and return
+ * everything, still sorted by distance when points are available.
  */
 export function nearbyRegionalFrequencies(
   points: { lat: number; lon: number }[],
@@ -212,7 +218,8 @@ export function nearbyRegionalFrequencies(
   showAll: boolean = false
 ): NearbyRegionalFrequency[] {
   if (points.length === 0) {
-    // With no route/position yet, still surface the always-on FIS sectors.
+    // With no route/position yet, there's nothing to measure distance
+    // against — still surface the FIS sectors rather than hiding them.
     return REGIONAL_FREQUENCIES.filter((f) => f.alwaysShow || showAll).map((f) => ({
       ...f,
       distanceNm: NaN
@@ -225,6 +232,9 @@ export function nearbyRegionalFrequencies(
   })
 
   return withDistance
-    .filter((f) => showAll || f.alwaysShow || f.distanceNm <= radiusNm)
+    .filter(
+      (f) =>
+        showAll || (f.alwaysShow ? f.distanceNm <= ALWAYS_SHOW_MAX_NM : f.distanceNm <= radiusNm)
+    )
     .sort((a, b) => a.distanceNm - b.distanceNm)
 }

@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { Waypoint } from '../lib/planning'
 import type { LivePosition } from '../lib/liveTracking'
 import { formatMhz, nearbyRegionalFrequencies } from '../lib/frequencies'
 import { distanceNm } from '../lib/geo'
 import { airspaceClassLabel, fetchAirspaceCeiling, type AirspaceCeilingResult } from '../lib/airspace'
+import { useCloseOnOutsideClick } from '../hooks/useCloseOnOutsideClick'
 
 const NEARBY_RADIUS_NM = 50
 
@@ -14,6 +15,9 @@ interface Props {
 }
 
 export default function MapInfoDrawer({ waypoints, livePosition, onClose }: Props) {
+  const drawerRef = useRef<HTMLDivElement | null>(null)
+  useCloseOnOutsideClick(drawerRef, true, onClose)
+
   const [freqOpen, setFreqOpen] = useState(true)
   const [airspaceOpen, setAirspaceOpen] = useState(true)
   const [airspaceLoading, setAirspaceLoading] = useState(false)
@@ -57,7 +61,7 @@ export default function MapInfoDrawer({ waypoints, livePosition, onClose }: Prop
   }
 
   return (
-    <div className="map-info-drawer">
+    <div className="map-info-drawer" ref={drawerRef}>
       <div className="map-info-drawer-header">
         <p className="panel-sublabel">Nearby info</p>
         <button type="button" className="map-info-drawer-close" onClick={onClose} aria-label="Close">
