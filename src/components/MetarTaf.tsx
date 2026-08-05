@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Waypoint } from '../lib/planning'
 import { fetchMetarTaf, fetchNearestStation } from '../lib/metar'
+import { decodeMetar, decodeTaf, type DecodedSection } from '../lib/metarDecode'
 
 interface ResolvedTarget {
   waypointLabel: string
@@ -8,6 +9,30 @@ interface ResolvedTarget {
   distanceNm: number | null // null when it's the waypoint's own ICAO; set when it's a fallback nearest station
   metar: string | null
   taf: string | null
+}
+
+function DecodedSections({ sections }: { sections: DecodedSection[] }) {
+  return (
+    <div className="metar-taf-decoded">
+      {sections.map((s, i) => (
+        <div className="metar-taf-decoded-section" key={i}>
+          {s.header && <p className="metar-taf-decoded-header">{s.header}</p>}
+          {s.lines.length > 0 && (
+            <ul className="metar-taf-decoded-list">
+              {s.lines.map((line, j) => (
+                <li key={j}>{line}</li>
+              ))}
+            </ul>
+          )}
+          {s.unparsed.length > 0 && (
+            <p className="metar-taf-decoded-unparsed">
+              Not decoded (read as-is above): {s.unparsed.join(' ')}
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
+  )
 }
 
 async function resolveTarget(wp: Waypoint, label: string): Promise<ResolvedTarget | null> {
@@ -25,6 +50,16 @@ export default function MetarTaf({ waypoints }: { waypoints: Waypoint[] }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [results, setResults] = useState<ResolvedTarget[] | null>(null)
+  const [translated, setTranslated] = useState<Set<string>>(new Set())
+
+  function toggleTranslated(icao: string) {
+    setTranslated((prev) => {
+      const next = new Set(prev)
+      if (next.has(icao)) next.delete(icao)
+      else next.add(icao)
+      return next
+    })
+  }
 
   const valid = waypoints.filter(
     (w) => Number.isFinite(w.lat) && Number.isFinite(w.lon) && (w.lat !== 0 || w.lon !== 0)
@@ -99,8 +134,19 @@ export default function MetarTaf({ waypoints }: { waypoints: Waypoint[] }) {
               </p>
               <p className="metar-taf-label">METAR</p>
               <pre className="metar-taf-text">{r.metar ?? 'No current METAR published.'}</pre>
+              {translated.has(r.icao) && r.metar && <DecodedSections sections={decodeMetar(r.metar)} />}
               <p className="metar-taf-label">TAF</p>
               <pre className="metar-taf-text">{r.taf ?? 'No current TAF published.'}</pre>
+              {translated.has(r.icao) && r.taf && <DecodedSections sections={decodeTaf(r.taf)} />}
+              {(r.metar || r.taf) && (
+                <button
+                  type="button"
+                  className="metar-taf-translate-btn"
+                  onClick={() => toggleTranslated(r.icao)}
+                >
+                  {translated.has(r.icao) ? 'Hide plain-language translation' : 'Translate to plain language'}
+                </button>
+              )}
             </div>
           ))}
         </div>

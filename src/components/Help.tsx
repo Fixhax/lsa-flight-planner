@@ -113,7 +113,8 @@ const HELP_GROUPS: HelpGroup[] = [
     paragraphs: [
       "The real, official published aviation reports (Aviation Weather Center's free public data) for your departure and destination — shown as raw, undecoded text on purpose, so nothing gets lost or misread in translation. Fetched only when you tap the button, not automatically.",
       "When a waypoint has its own ICAO identifier, that airport's own METAR/TAF is shown. When it doesn't — most of this app's curated grass/gravel strips are uncontrolled and don't have one — this instead looks up the nearest currently-reporting station and shows that, clearly labeled with its distance and \"not the field itself\". A station a few nm away can still have meaningfully different wind, cloud, or visibility than the actual strip, especially near terrain or coastline — use it as context, not as if it were measured at the field.",
-      "This is still not a substitute for a full pre-flight briefing (SIGMET/NOTAM/AIRMET aren't included) — see \"Weather report\" above for the general forecast model instead, which is a different thing entirely."
+      "This is still not a substitute for a full pre-flight briefing (SIGMET/NOTAM/AIRMET aren't included) — see \"Weather report\" above for the general forecast model instead, which is a different thing entirely.",
+      "\"Translate to plain language\" decodes the standard groups (wind, visibility, weather, cloud, temperature/dew point, altimeter, and TAF's BECMG/TEMPO/PROB/FM change periods) into plain English below the raw text — a learning aid for reading reports faster, not a replacement for the raw text itself, which always stays shown above it. It's a fixed, offline decoder (no AI rewriting involved), so it never guesses: anything it doesn't recognize — remarks (RMK…) especially — is listed as \"not decoded\" rather than paraphrased into something that might be wrong."
     ]
   },
   {
