@@ -159,5 +159,26 @@ export const airstrips: AirstripEntry[] = [
     lengthM: 500,
     pprContact: { name: 'Arnt Ring', phone: '97993005' },
     note: 'Surface assumed grass (not independently confirmed) \u2014 PPR required, call owner'
+  },
+  {
+    id: 'no-klanten',
+    name: 'Gol, Klanten',
+    icao: 'ENKL',
+    country: 'NO',
+    region: 'Buskerud',
+    surface: 'grass',
+    lat: 60.7914,
+    lon: 9.0506,
+    lengthM: 1150,
+    elevationFt: 2720,
+    runway: '11/29',
+    frequencies: [
+      {
+        type: 'Traffic',
+        mhz: 133.99,
+        note: 'New local frequency effective 1 Jan 2026 (8.33 kHz changeover), confirmed on the field\u2019s own club site \u2014 switch to it within 8nm and below 6,000ft AMSL of Klanten; replaces the field\u2019s previous local frequency.'
+      }
+    ],
+    note: 'Grass strip (per Wikipedia; club site says 1150m with a 660m paved inset, sources vary slightly on the declared length) \u2014 winter length typically ~800m. Home of Hallingdal Flyklubb; active glider/aerobatic soaring and towing site as well as GA.'
   }
 ]
