@@ -828,16 +828,25 @@ export default function App() {
           )}
         </div>
         <div className="waypoint-list">
-          {waypoints.map((wp, i) => (
+          {waypoints.map((wp, i) => {
+            const isStart = i === 0
+            const isDestination = i === waypoints.length - 1 && waypoints.length > 1
+            const role = isStart ? 'start' : isDestination ? 'destination' : 'middle'
+            return (
             <div className="waypoint-row" key={wp.id}>
-              <span className="waypoint-dot" />
+              <span className={`waypoint-dot waypoint-dot-${role}`} />
               <div className="waypoint-body">
+                {(isStart || isDestination) && (
+                  <span className={`waypoint-role-badge waypoint-role-badge-${role}`}>
+                    {isStart ? 'Start' : 'Destination'}
+                  </span>
+                )}
                 <StripSearch onSelect={(strip) => applyStrip(wp.id, strip)} />
                 <div className="waypoint-fields">
                   <input
                     id={`wp-name-${wp.id}`}
                     className="name"
-                    placeholder={`WP${i + 1} name`}
+                    placeholder={isStart ? 'Start name' : isDestination ? 'Destination name' : `WP${i + 1} name`}
                     value={wp.name}
                     onChange={(e) => updateWaypoint(wp.id, { name: e.target.value })}
                   />
@@ -874,7 +883,8 @@ export default function App() {
                 &times;
               </button>
             </div>
-          ))}
+            )
+          })}
         </div>
         <div className="waypoint-list-actions">
           <button className="add-waypoint" onClick={addWaypoint}>

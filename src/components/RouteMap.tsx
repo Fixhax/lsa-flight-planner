@@ -802,7 +802,12 @@ export default function RouteMap({
           <button
             type="button"
             onClick={() => {
-              onInsertWaypoint(waypoints.length - 1, longPressMenu.lat, longPressMenu.lon)
+              // Inserts just before the current last waypoint rather than
+              // appending after it — once a start and destination are set
+              // (via the two buttons below), every further tap fills in
+              // the route between them instead of pushing the destination
+              // further down the list.
+              onInsertWaypoint(waypoints.length - 2, longPressMenu.lat, longPressMenu.lon)
               setLongPressMenu(null)
             }}
           >
@@ -820,6 +825,19 @@ export default function RouteMap({
             }}
           >
             &#128747; Set as start
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              // Appends at the very end — becomes the new last waypoint
+              // (destination). "Add waypoint here" above then fills in
+              // between whatever's currently first and last, rather than
+              // pushing this back down the list.
+              onInsertWaypoint(waypoints.length - 1, longPressMenu.lat, longPressMenu.lon)
+              setLongPressMenu(null)
+            }}
+          >
+            &#127937; Set destination
           </button>
           <button
             type="button"
