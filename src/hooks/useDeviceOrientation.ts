@@ -8,6 +8,12 @@ import { useEffect, useRef, useState } from 'react'
 // visibly shaky rather than tracking smooth, real attitude changes.
 const SMOOTHING = 0.15
 
+// Lower than SMOOTHING — differentiating an already-smoothed signal
+// (heading, to get turn rate) still amplifies its remaining noise a lot,
+// so the rate itself needs heavier damping on top to be readable rather
+// than jumping around every sample.
+const TURN_RATE_SMOOTHING = 0.08
+
 // Standard gravity, m/s² — the expected accelerationIncludingGravity
 // magnitude when the device is experiencing gravity alone, used as a
 // reference point for how much a given sample is being thrown off by
@@ -49,6 +55,15 @@ export function useDeviceOrientation(active = true) {
   // is deliberately not used as a substitute, since a heading that's
   // silently wrong by an unknown offset is worse than no heading at all.
   const [heading, setHeading] = useState<number | null>(null)
+  // Rate of turn, degrees/second, positive = turning right — derived by
+  // differentiating heading over time rather than from the gyroscope
+  // directly. This sidesteps needing to know which gyroscope axis is
+  // "yaw" for however the device happens to be mounted (the same
+  // ambiguity the invert/swap calibration below exists to handle for
+  // pitch/roll): compass heading is already earth-referenced regardless
+  // of mount orientation, so its rate of change is turn rate no matter
+  // how the phone is sitting.
+  const [turnRateDegPerSec, setTurnRateDegPerSec] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -148,10 +163,15 @@ export function useDeviceOrientation(active = true) {
   // time the heading crossed due north. Averaging the (cos, sin) pair and
   // re-deriving the angle from that sidesteps the wraparound entirely.
   const smoothHeadingVecRef = useRef<{ x: number; y: number } | null>(null)
+  // Previous smoothed-heading sample, for differentiating into turn rate.
+  const lastHeadingSampleRef = useRef<{ heading: number; time: number } | null>(null)
+  const smoothTurnRateRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (permission !== 'granted' || !active) return
     smoothHeadingVecRef.current = null
+    lastHeadingSampleRef.current = null
+    smoothTurnRateRef.current = null
 
     function handleOrientation(e: DeviceOrientationEvent) {
       const webkitHeading = (e as DeviceOrientationEvent & { webkitCompassHeading?: number })
@@ -171,12 +191,38 @@ export function useDeviceOrientation(active = true) {
         ? { x: prev.x + SMOOTHING * (vec.x - prev.x), y: prev.y + SMOOTHING * (vec.y - prev.y) }
         : vec
       smoothHeadingVecRef.current = smoothed
-      setHeading((((Math.atan2(smoothed.y, smoothed.x) * 180) / Math.PI) + 360) % 360)
+      const smoothedHeading = (((Math.atan2(smoothed.y, smoothed.x) * 180) / Math.PI) + 360) % 360
+      setHeading(smoothedHeading)
+
+      // Differentiate into turn rate. Skipped on very short intervals
+      // (back-to-back events) — dividing by a tiny dt amplifies whatever
+      // noise is left after the heading's own smoothing into huge,
+      // meaningless rate spikes, so this only updates at a sane minimum
+      // interval and just holds the last rate in between.
+      const now = performance.now()
+      const prevSample = lastHeadingSampleRef.current
+      if (prevSample) {
+        const dtSec = (now - prevSample.time) / 1000
+        if (dtSec > 0.05) {
+          const delta = ((smoothedHeading - prevSample.heading + 540) % 360) - 180
+          const instantRateDegPerSec = delta / dtSec
+          const prevRate = smoothTurnRateRef.current ?? instantRateDegPerSec
+          // Differentiation amplifies noise, so this gets its own (heavier)
+          // smoothing pass on top of the already-smoothed heading it's
+          // computed from.
+          const rate = prevRate + TURN_RATE_SMOOTHING * (instantRateDegPerSec - prevRate)
+          smoothTurnRateRef.current = rate
+          setTurnRateDegPerSec(rate)
+          lastHeadingSampleRef.current = { heading: smoothedHeading, time: now }
+        }
+      } else {
+        lastHeadingSampleRef.current = { heading: smoothedHeading, time: now }
+      }
     }
 
     window.addEventListener('deviceorientation', handleOrientation)
     return () => window.removeEventListener('deviceorientation', handleOrientation)
   }, [permission, active])
 
-  return { permission, orientation, heading, error, requestPermission }
+  return { permission, orientation, heading, turnRateDegPerSec, error, requestPermission }
 }

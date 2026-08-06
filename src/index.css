@@ -2732,6 +2732,12 @@ button:focus-visible {
   aspect-ratio: 5 / 3;
 }
 
+.turn-coordinator {
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 200 / 130;
+}
+
 .attitude-readout {
   display: flex;
   gap: 20px;

@@ -45,22 +45,44 @@ interface Calibration {
   invertPitch: boolean
   invertRoll: boolean
   swapAxes: boolean
+  invertSlipSkid: boolean
 }
 
 function loadCalibration(): Calibration {
   try {
     const raw = localStorage.getItem(CALIBRATION_KEY)
-    if (!raw) return { invertPitch: false, invertRoll: false, swapAxes: false }
+    if (!raw) return { invertPitch: false, invertRoll: false, swapAxes: false, invertSlipSkid: false }
     const parsed = JSON.parse(raw) as Partial<Calibration>
     return {
       invertPitch: !!parsed.invertPitch,
       invertRoll: !!parsed.invertRoll,
-      swapAxes: !!parsed.swapAxes
+      swapAxes: !!parsed.swapAxes,
+      invertSlipSkid: !!parsed.invertSlipSkid
     }
   } catch {
-    return { invertPitch: false, invertRoll: false, swapAxes: false }
+    return { invertPitch: false, invertRoll: false, swapAxes: false, invertSlipSkid: false }
   }
 }
+
+// Turn coordinator constants. The face is calibrated so the wingtip
+// symbol aligns with a fixed reference dot at exactly standard rate (3
+// deg/sec, the universal "2-minute turn" convention) — TC_VISUAL_DEG_PER_STANDARD_RATE
+// is how far the symbol itself rotates at that rate, which is a display
+// convention, not a real bank angle (a turn coordinator has never shown
+// actual bank — only a real attitude indicator does that).
+const STANDARD_RATE_DEG_PER_SEC = 3
+const TC_VISUAL_DEG_PER_STANDARD_RATE = 20
+const TC_MAX_VISUAL_DEG = 35
+const TC_CX = 100
+const TC_CY = 50
+const TC_WING_HALF_LEN = 38
+const GRAVITY_MPS2 = 9.80665
+const KT_TO_MPS = 0.514444
+// Below this, ground speed is too slow/noisy (taxiing, stationary testing)
+// for the coordination math to mean anything real.
+const MIN_SPEED_FOR_COORDINATION_KT = 20
+const BALL_PX_PER_DEG = 6
+const BALL_MAX_TRAVEL_PX = 50
 
 export default function AttitudeBearing({
   waypoints,
@@ -70,7 +92,8 @@ export default function AttitudeBearing({
   onStartGps
 }: Props) {
   const [active, setActive] = useState(true)
-  const { permission, orientation, heading, error, requestPermission } = useDeviceOrientation(active)
+  const { permission, orientation, heading, turnRateDegPerSec, error, requestPermission } =
+    useDeviceOrientation(active)
   const [offset, setOffset] = useState({ pitch: 0, roll: 0 })
   // How the device's sensor axes relate to how it's actually mounted
   // (yoke, kneeboard, flat on a seat, etc.) is a fixed fact about that
@@ -84,18 +107,19 @@ export default function AttitudeBearing({
     roll: initialCalibration.current.invertRoll
   })
   const [swapAxes, setSwapAxes] = useState(initialCalibration.current.swapAxes)
+  const [invertSlipSkid, setInvertSlipSkid] = useState(initialCalibration.current.invertSlipSkid)
   const [manualTargetId, setManualTargetId] = useState('auto')
 
   useEffect(() => {
     try {
       localStorage.setItem(
         CALIBRATION_KEY,
-        JSON.stringify({ invertPitch: invert.pitch, invertRoll: invert.roll, swapAxes })
+        JSON.stringify({ invertPitch: invert.pitch, invertRoll: invert.roll, swapAxes, invertSlipSkid })
       )
     } catch {
       // ignore — private browsing or storage full; just won't stick next time
     }
-  }, [invert.pitch, invert.roll, swapAxes])
+  }, [invert.pitch, invert.roll, swapAxes, invertSlipSkid])
 
   const rawPitch0 = orientation?.pitchDeg ?? 0
   const rawRoll0 = orientation?.rollDeg ?? 0
@@ -162,6 +186,58 @@ export default function AttitudeBearing({
     target?.elevationFt !== undefined && livePosition?.altitudeFt !== undefined
       ? target.elevationFt - livePosition.altitudeFt
       : null
+
+  // Turn coordinator. The banking-symbol part just needs turn rate, which
+  // useDeviceOrientation already provides. The slip/skid ball needs more:
+  // in a properly coordinated turn, bank angle and turn rate aren't
+  // independent — tan(bank) = (turn rate * true airspeed) / g — so the gap
+  // between your ACTUAL bank (already computed above, as `roll`) and the
+  // bank THAT turn rate would call for at your current speed is exactly
+  // what a slip/skid ball measures, without needing to guess which raw
+  // accelerometer axis is "lateral" for however the phone happens to be
+  // mounted (there isn't a clean way to isolate that from a single static
+  // gravity reading — see the confidence-weighting note in
+  // useDeviceOrientation for why). True airspeed isn't available from a
+  // phone, so this uses GPS ground speed as an approximation — wind means
+  // it won't always be exact, but it's close enough at typical LSA speeds
+  // for this to be meaningfully more informative than nothing.
+  const groundSpeedKt = livePosition?.speedKt
+  const hasSpeedForCoordination =
+    groundSpeedKt !== undefined && groundSpeedKt >= MIN_SPEED_FOR_COORDINATION_KT
+  const coordinatedBankDeg =
+    turnRateDegPerSec !== null && hasSpeedForCoordination
+      ? (Math.atan(
+          (((turnRateDegPerSec * Math.PI) / 180) * (groundSpeedKt! * KT_TO_MPS)) / GRAVITY_MPS2
+        ) *
+          180) /
+        Math.PI
+      : null
+  const slipSkidDeg =
+    coordinatedBankDeg !== null ? (roll - coordinatedBankDeg) * (invertSlipSkid ? -1 : 1) : null
+
+  const turnRateVisualDeg =
+    turnRateDegPerSec !== null
+      ? Math.max(
+          -TC_MAX_VISUAL_DEG,
+          Math.min(
+            TC_MAX_VISUAL_DEG,
+            (turnRateDegPerSec / STANDARD_RATE_DEG_PER_SEC) * TC_VISUAL_DEG_PER_STANDARD_RATE
+          )
+        )
+      : 0
+  const stdRateRad = (TC_VISUAL_DEG_PER_STANDARD_RATE * Math.PI) / 180
+  const stdRateDotRight = {
+    x: TC_CX + TC_WING_HALF_LEN * Math.cos(stdRateRad),
+    y: TC_CY + TC_WING_HALF_LEN * Math.sin(stdRateRad)
+  }
+  const stdRateDotLeft = {
+    x: TC_CX - TC_WING_HALF_LEN * Math.cos(stdRateRad),
+    y: TC_CY + TC_WING_HALF_LEN * Math.sin(stdRateRad)
+  }
+  const ballOffsetPx =
+    slipSkidDeg !== null
+      ? Math.max(-BALL_MAX_TRAVEL_PX, Math.min(BALL_MAX_TRAVEL_PX, slipSkidDeg * BALL_PX_PER_DEG))
+      : 0
 
   if (!active) {
     return (
@@ -342,6 +418,76 @@ export default function AttitudeBearing({
         <span>Hdg {heading !== null ? `${Math.round(heading)}°` : '—'}</span>
       </div>
 
+      <svg
+        viewBox="0 0 200 130"
+        className="turn-coordinator"
+        role="img"
+        aria-label="Turn coordinator"
+      >
+        <rect x="4" y="4" width="192" height="72" rx="10" fill="#1d2532" stroke="#0d1117" strokeWidth="3" />
+
+        {/* Fixed wings-level reference — the symbol below rests here at
+            zero turn rate. */}
+        <g stroke="#666" strokeWidth="2">
+          <line x1={TC_CX - TC_WING_HALF_LEN - 4} y1={TC_CY} x2={TC_CX - TC_WING_HALF_LEN + 6} y2={TC_CY} />
+          <line x1={TC_CX + TC_WING_HALF_LEN - 6} y1={TC_CY} x2={TC_CX + TC_WING_HALF_LEN + 4} y2={TC_CY} />
+        </g>
+
+        {/* Standard-rate (3 deg/sec, the universal "2-minute turn") dots —
+            the wingtip aligns with one of these at exactly that rate. This
+            is a display convention, same as a real turn coordinator: the
+            symbol's rotation represents turn RATE, not actual bank angle,
+            even though it's drawn as a banking aircraft. */}
+        <circle cx={stdRateDotLeft.x} cy={stdRateDotLeft.y} r="3" fill="#ffb703" />
+        <circle cx={stdRateDotRight.x} cy={stdRateDotRight.y} r="3" fill="#ffb703" />
+
+        <g transform={`rotate(${turnRateVisualDeg} ${TC_CX} ${TC_CY})`}>
+          <rect
+            x={TC_CX - TC_WING_HALF_LEN}
+            y={TC_CY - 3}
+            width={TC_WING_HALF_LEN * 2}
+            height="6"
+            rx="3"
+            fill="#fff"
+          />
+          <rect x={TC_CX - 3} y={TC_CY - 20} width="6" height="20" rx="2" fill="#fff" />
+        </g>
+        <circle cx={TC_CX} cy={TC_CY} r="4" fill="#ffcc00" />
+
+        {/* Slip/skid ball — see the comment above where slipSkidDeg is
+            computed for what it actually measures. Grey/centered rather
+            than hidden when there's no speed/turn-rate data to compute it
+            from, so the gauge doesn't jump in and out of existence. */}
+        <rect x="60" y="94" width="80" height="20" rx="10" fill="#0d1117" stroke="#444" strokeWidth="1.5" />
+        <line x1="88" y1="94" x2="88" y2="114" stroke="#444" strokeWidth="1.5" />
+        <line x1="112" y1="94" x2="112" y2="114" stroke="#444" strokeWidth="1.5" />
+        <circle
+          cx={100 + ballOffsetPx}
+          cy="104"
+          r="7"
+          fill={slipSkidDeg !== null ? '#fff' : '#555'}
+          stroke="#0d1117"
+          strokeWidth="1.5"
+        />
+      </svg>
+
+      <div className="attitude-readout">
+        <span>
+          Turn{' '}
+          {turnRateDegPerSec !== null
+            ? `${Math.abs(turnRateDegPerSec).toFixed(1)}°/s ${turnRateDegPerSec >= 0 ? 'R' : 'L'} (${(Math.abs(turnRateDegPerSec) / STANDARD_RATE_DEG_PER_SEC).toFixed(1)}x std)`
+            : '—'}
+        </span>
+        <span>
+          Slip/skid{' '}
+          {slipSkidDeg !== null
+            ? `${slipSkidDeg >= 0 ? '+' : ''}${slipSkidDeg.toFixed(1)}°`
+            : hasSpeedForCoordination
+              ? '—'
+              : 'need GPS speed'}
+        </span>
+      </div>
+
       {target && (
         <div className="attitude-bearing-target-readout">
           <strong>{target.name}</strong>
@@ -401,6 +547,14 @@ export default function AttitudeBearing({
           <input type="checkbox" checked={swapAxes} onChange={(e) => setSwapAxes(e.target.checked)} />
           Swap pitch/bank
         </label>
+        <label className="checkbox-field attitude-invert">
+          <input
+            type="checkbox"
+            checked={invertSlipSkid}
+            onChange={(e) => setInvertSlipSkid(e.target.checked)}
+          />
+          Invert slip/skid
+        </label>
       </div>
 
       <button type="button" className="attitude-close-btn" onClick={() => setActive(false)}>
@@ -416,6 +570,16 @@ export default function AttitudeBearing({
         orientation as zero. Invert/swap settings are remembered on this device, so you shouldn't need
         to reset them every session — "Level / center" still resets each time you open this, since
         re-leveling before flight is good practice regardless of mount.
+      </p>
+      <p className="footnote">
+        The turn coordinator's rate needle is derived from how fast the compass heading is changing,
+        not a raw gyroscope reading — same reasoning as the bearing line above, sidesteps needing to
+        know which axis is "yaw" for whatever way the phone is mounted. The slip/skid ball compares
+        your actual bank to the bank a coordinated turn would need at your current turn rate and GPS
+        ground speed (used as a stand-in for true airspeed, since a phone has no way to measure that
+        directly — close enough at typical LSA speeds, but not exact). Needs GPS speed above ~20kt to
+        mean anything; shows as a grey centered ball below that. If it reads backwards for how your
+        device is mounted, "Invert slip/skid" above flips it.
       </p>
     </div>
   )
