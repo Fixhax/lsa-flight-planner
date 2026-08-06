@@ -4,7 +4,10 @@ export interface AirstripEntry {
   icao?: string
   country: 'NO' | 'SE'
   region: string // county / län
-  surface: 'grass' | 'gravel'
+  // 'paved' is the rare exception to this file's usual grass/gravel scope —
+  // reserved for a major field kept in the list for its published radio
+  // frequencies/diversion value despite not being an LSA strip itself.
+  surface: 'grass' | 'gravel' | 'paved'
   lat: number
   lon: number
   lengthM?: number // runway length, metres
@@ -1443,5 +1446,25 @@ export const airstrips: AirstripEntry[] = [
     lat: 68.8972,
     lon: 20.2478,
     note: 'Old military OP strip on a moraine ridge, condition last checked ok in 2002 per source \u2014 landing permission required from M\u00e5lselv kommune/Troms fylke; treat condition as unverified until confirmed current'
+  },
+  {
+    id: 'no-orland-flystasjon',
+    name: '\u00d8rland Flystasjon',
+    icao: 'ENOL',
+    country: 'NO',
+    region: 'Tr\u00f8ndelag',
+    surface: 'paved',
+    lat: 63.6990,
+    lon: 9.6040,
+    lengthM: 3278,
+    elevationFt: 30,
+    runway: '15/33',
+    frequencies: [
+      { type: 'TWR', mhz: 118.705 },
+      { type: 'APP', mhz: 118.255 },
+      { type: 'APP', mhz: 126.205 },
+      { type: 'ATIS', mhz: 119.330 }
+    ],
+    note: 'Major joint civil/military airbase (NATO F-35 base + Wider\u00f8e passenger service), not an LSA grass/gravel strip \u2014 kept here for its published frequencies and as a diversion/reference point. Controlled airspace: expect ATC clearance requirements, not uncontrolled-field procedures.'
   }
 ]
