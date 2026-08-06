@@ -17,7 +17,6 @@ interface Props {
 const PITCH_LADDER = [-60, -50, -40, -30, -20, -10, 10, 20, 30, 40, 50, 60]
 const BANK_TICKS = [-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60]
 const PX_PER_DEG = 2.6
-const FT_PER_NM = 6076.12
 
 // Wide rectangular frame (rather than a circular attitude-ball bezel) —
 // closer to how a real wide-format PFD/synthetic-vision display looks,
@@ -165,13 +164,6 @@ export default function SyntheticVision({
       ? target.elevationFt - livePosition.altitudeFt
       : null
 
-  const elevationAngleDeg =
-    altDiffFt !== null && targetInfo && targetInfo.distanceNm > 0.01
-      ? (Math.atan2(altDiffFt, targetInfo.distanceNm * FT_PER_NM) * 180) / Math.PI
-      : 0
-
-  const showMarker = relativeBearingDeg !== null
-
   if (!active) {
     return (
       <button type="button" className="live-tracking-btn" onClick={() => setActive(true)}>
@@ -267,22 +259,6 @@ export default function SyntheticVision({
               </g>
             ))}
 
-            {/* Target marker — plotted in the same horizon-local space as
-                the pitch ladder, so it moves with pitch/bank exactly like
-                a real point out the windscreen would. Horizontal position
-                is relative bearing (heading to target minus your current
-                heading); vertical is the elevation angle to the target
-                given its published field elevation vs your GPS altitude —
-                falls back to sitting right on the horizon line when either
-                altitude figure is unknown, rather than guessing. Naturally
-                disappears off the frame when the target isn't roughly
-                ahead, same as extreme pitch ladder numbers already do. */}
-            {showMarker && target && (
-              <g transform={`translate(${relativeBearingDeg! * PX_PER_DEG} ${-elevationAngleDeg * PX_PER_DEG})`}>
-                <circle r="6" fill="none" stroke="#4fd1c5" strokeWidth="2.5" />
-                <circle r="2" fill="#4fd1c5" />
-              </g>
-            )}
           </g>
         </g>
 
@@ -309,25 +285,36 @@ export default function SyntheticVision({
           />
         </g>
 
-        {/* Rim arrow — always shows which way to turn toward the target,
-            fixed to the screen (not rotated with bank) since it answers a
-            heading question, not an attitude one. Visible even when the
-            target is well outside the horizon view above (behind you, or
-            far to one side). */}
-        {relativeBearingDeg !== null &&
-          (() => {
-            const tip = arcPoint(relativeBearingDeg, 84)
-            const left = arcPoint(relativeBearingDeg - 6, 72)
-            const right = arcPoint(relativeBearingDeg + 6, 72)
-            return (
-              <polygon
-                points={`${tip.x},${tip.y} ${left.x},${left.y} ${right.x},${right.y}`}
-                fill="#4fd1c5"
-                stroke="#0d1117"
-                strokeWidth="1"
-              />
-            )
-          })()}
+        {/* Target bearing line — a single indicator, deliberately fixed to
+            the screen (not rotated with bank), unlike the horizon/pitch
+            ladder above it. An earlier version used a horizon-space dot
+            (rotating with bank, like a real point out the windscreen)
+            *and* a separate screen-fixed rim arrow at the same time — the
+            two answer different questions (attitude vs. heading) and so
+            visibly diverge from each other under any bank angle, which
+            read as broken rather than as two correct-but-different things.
+            One consistent reference frame instead: this line always means
+            "turn toward here," full stop. Positioned purely by relative
+            bearing (heading to target minus your current heading); clipped
+            by the same frame as the horizon, so it naturally disappears
+            when the target isn't roughly ahead — the numeric bearing in
+            the readout below still works even then. */}
+        {relativeBearingDeg !== null && (
+          <g clipPath="url(#sv-bezel-clip)">
+            <line
+              x1={CENTER_X + relativeBearingDeg * PX_PER_DEG}
+              y1="14"
+              x2={CENTER_X + relativeBearingDeg * PX_PER_DEG}
+              y2={VIEW_H - 14}
+              stroke="#4fd1c5"
+              strokeWidth="2.5"
+            />
+            <polygon
+              points={`${CENTER_X + relativeBearingDeg * PX_PER_DEG},14 ${CENTER_X + relativeBearingDeg * PX_PER_DEG - 6},24 ${CENTER_X + relativeBearingDeg * PX_PER_DEG + 6},24`}
+              fill="#4fd1c5"
+            />
+          </g>
+        )}
 
         <rect
           x="8"
@@ -427,13 +414,13 @@ export default function SyntheticVision({
 
       <p className="footnote">
         Reference only — derived from this device's motion sensors and GPS, not a certified flight
-        instrument or real synthetic vision system (no terrain is rendered — just a bearing/elevation
-        pointer toward the selected target, computed from its published coordinates and elevation).
-        Never rely on this instead of proper training, visual reference, or certified panel
-        instruments. "Level / center" sets the device's current orientation as zero. Invert/swap
-        settings are remembered on this device, so you shouldn't need to reset them every session —
-        "Level / center" still resets each time you open this, since re-leveling before flight is
-        good practice regardless of mount.
+        instrument or real synthetic vision system (no terrain is rendered — the vertical line is
+        just a bearing pointer toward the selected target's coordinates; distance and altitude
+        difference are numbers in the readout below it, not part of the graphic). Never rely on this
+        instead of proper training, visual reference, or certified panel instruments. "Level / center"
+        sets the device's current orientation as zero. Invert/swap settings are remembered on this
+        device, so you shouldn't need to reset them every session — "Level / center" still resets each
+        time you open this, since re-leveling before flight is good practice regardless of mount.
       </p>
     </div>
   )
