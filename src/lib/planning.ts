@@ -51,7 +51,8 @@ export function planRoute(
   cruiseTasKt: number = aircraft.cruiseTasKt,
   usableFuelL: number = aircraft.fuelCapacityL - aircraft.unusableFuelL,
   fuelOnBoardLInput: number = usableFuelL,
-  reserveMinutesInput: number = aircraft.reserveMinutes
+  reserveMinutesInput: number = aircraft.reserveMinutes,
+  fuelBurnLph: number = aircraft.fuelBurnLph
 ): NavLog {
   const fuelOnBoardL = Math.max(0, Math.min(fuelOnBoardLInput, usableFuelL))
   const reserveMinutes = Math.max(MIN_RESERVE_MINUTES, reserveMinutesInput)
@@ -68,7 +69,7 @@ export function planRoute(
       solveWindTriangle(tc, cruiseTasKt, wind)
 
     const timeMinutes = groundSpeedKt > 0 ? (dist / groundSpeedKt) * 60 : 0
-    const fuelBurnL = (timeMinutes / 60) * aircraft.fuelBurnLph
+    const fuelBurnL = (timeMinutes / 60) * fuelBurnLph
     remaining -= fuelBurnL
 
     legs.push({
@@ -89,7 +90,7 @@ export function planRoute(
   const totalTimeMinutes = legs.reduce((sum, l) => sum + l.timeMinutes, 0)
   const totalFuelBurnL = legs.reduce((sum, l) => sum + l.fuelBurnL, 0)
 
-  const reserveFuelL = (reserveMinutes / 60) * aircraft.fuelBurnLph
+  const reserveFuelL = (reserveMinutes / 60) * fuelBurnLph
   const fuelRequiredL = totalFuelBurnL + reserveFuelL
   const fuelRemainingAtLandingL = fuelOnBoardL - totalFuelBurnL
   const marginAboveReserveL = fuelRemainingAtLandingL - reserveFuelL

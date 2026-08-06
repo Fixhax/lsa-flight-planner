@@ -86,7 +86,8 @@ const HELP_GROUPS: HelpGroup[] = [
     title: 'Fuel',
     paragraphs: [
       "Extended-tank capacity (where applicable) is an estimate, not a confirmed factory spec — verify against your aircraft's documentation before relying on it.",
-      "For Jet A aircraft with kg/h selected (see the Aircraft panel), fuel onboard and the fuel gauge switch to kg too — everything here follows that one toggle, so you're not reading some numbers in L and others in kg."
+      "For Jet A aircraft with kg/h selected (see the Aircraft panel), fuel onboard and the fuel gauge switch to kg too — everything here follows that one toggle, so you're not reading some numbers in L and others in kg.",
+      "Fuel burn rate is editable — the registry figure is a published average, and your actual aircraft/engine may burn more or less depending on mixture leaning, power setting, or engine condition. Every fuel and endurance number in the app (nav log, fuel gauge, flight-plan sheet, direct-to/engine-out fuel estimates) uses whatever you've set here. \"Reset to published\" only appears once you've changed it from the registry default, and switching aircraft always resets it back to that aircraft's own published figure."
     ]
   },
   {

@@ -168,6 +168,12 @@ export default function App() {
   const [emptyWeightKg, setEmptyWeightKg] = useState(
     persisted?.emptyWeightKg ?? aircraftRegistry[0].emptyWeightKg
   )
+  // Overridable — published burn-rate specs are averages; a real
+  // aircraft/engine's actual consumption varies with mixture leaning,
+  // power setting, and engine condition.
+  const [fuelBurnLph, setFuelBurnLph] = useState(
+    persisted?.fuelBurnLph ?? aircraftRegistry[0].fuelBurnLph
+  )
 
   // Applies a PersistedPlan-shaped snapshot onto the working state — shared
   // by the cloud-hydrate-on-sign-in effect below and by "Load" in the
@@ -193,6 +199,7 @@ export default function App() {
     if (plan.luggageKg !== undefined) setLuggageKg(plan.luggageKg)
     if (plan.mtowKg !== undefined) setMtowKg(plan.mtowKg)
     if (plan.emptyWeightKg !== undefined) setEmptyWeightKg(plan.emptyWeightKg)
+    if (plan.fuelBurnLph !== undefined) setFuelBurnLph(plan.fuelBurnLph)
   }
 
   // The inverse of applyPersistedPlan — snapshots the working state into
@@ -215,7 +222,8 @@ export default function App() {
       passengerKg,
       luggageKg,
       mtowKg,
-      emptyWeightKg
+      emptyWeightKg,
+      fuelBurnLph
     }
   }
 
@@ -268,7 +276,8 @@ export default function App() {
     passengerKg,
     luggageKg,
     mtowKg,
-    emptyWeightKg
+    emptyWeightKg,
+    fuelBurnLph
   ])
 
   const [livePosition, setLivePosition] = useState<LivePosition | null>(null)
@@ -390,6 +399,11 @@ export default function App() {
   }
 
   const aircraft = getAircraftById(aircraftId) ?? aircraftRegistry[0]
+  // Aircraft object with the adjustable fuel-burn override applied — for
+  // the handful of consumers (the flight-plan sheet) that take a whole
+  // AircraftProfile and read .fuelBurnLph internally, rather than a
+  // separate parameter the way planRoute below does.
+  const effectiveAircraft = { ...aircraft, fuelBurnLph }
 
   useEffect(() => {
     setAircraftCategoryTab(aircraft.category)
@@ -419,6 +433,7 @@ export default function App() {
     setReserveMinutes(aircraft.reserveMinutes)
     setMtowKg(aircraft.maxTakeoffWeightKg)
     setEmptyWeightKg(aircraft.emptyWeightKg)
+    setFuelBurnLph(aircraft.fuelBurnLph)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aircraftId])
 
@@ -452,9 +467,10 @@ export default function App() {
         cruiseSpeedKt,
         usableFuelL,
         fuelOnBoardL,
-        reserveMinutes
+        reserveMinutes,
+        fuelBurnLph
       ),
-    [validWaypoints, aircraft, wind, cruiseSpeedKt, usableFuelL, fuelOnBoardL, reserveMinutes]
+    [validWaypoints, aircraft, wind, cruiseSpeedKt, usableFuelL, fuelOnBoardL, reserveMinutes, fuelBurnLph]
   )
 
   const selectedPatternStrip = patternCapableStrips.find((s) => s.id === patternStripId)
@@ -819,7 +835,7 @@ export default function App() {
             Burn{' '}
             <strong>
               {lphToFuelBurnUnit(
-                aircraft.fuelBurnLph,
+                fuelBurnLph,
                 aircraft.fuelType === 'jetA' ? fuelBurnUnit : 'lph',
                 FUEL_DENSITY_KG_PER_L[aircraft.fuelType]
               ).toFixed(1)}{' '}
@@ -956,7 +972,7 @@ export default function App() {
           glide={glide}
           liveGlide={liveGlide}
           livePosition={livePosition}
-          fuelBurnLph={aircraft.fuelBurnLph}
+          fuelBurnLph={fuelBurnLph}
           cruiseSpeedKt={cruiseSpeedKt}
           visible={openSections.has('route') || isMapFullscreen}
           pattern={trafficPattern}
@@ -1211,6 +1227,32 @@ export default function App() {
             />
           </div>
           <div className="field">
+            <div className="field-label-row">
+              <label htmlFor="fuel-burn-rate">
+                Fuel burn rate ({showFuelInKg ? 'kg/h' : 'L/h'})
+              </label>
+              {fuelBurnLph !== aircraft.fuelBurnLph && (
+                <button
+                  type="button"
+                  className="fill-btn"
+                  onClick={() => setFuelBurnLph(aircraft.fuelBurnLph)}
+                >
+                  Reset to published{' '}
+                  {(aircraft.fuelBurnLph * fuelDisplayFactor).toFixed(1)} {showFuelInKg ? 'kg/h' : 'L/h'}
+                </button>
+              )}
+            </div>
+            <NumberStepper
+              id="fuel-burn-rate"
+              min={0}
+              step={showFuelInKg ? 1 : 0.5}
+              decimals={1}
+              ariaLabel="fuel burn rate"
+              value={fuelBurnLph * fuelDisplayFactor}
+              onChange={(v) => setFuelBurnLph(v / fuelDisplayFactor)}
+            />
+          </div>
+          <div className="field">
             <label htmlFor="reserve-min">Reserve (min, min. {MIN_RESERVE_MINUTES})</label>
             <NumberStepper
               id="reserve-min"
@@ -1334,7 +1376,7 @@ export default function App() {
               <div className="stat-value">
                 {navLog.fuelRemainingAtLandingL >= 0 ? '' : '-'}
                 {formatMinutes(
-                  Math.abs((navLog.fuelRemainingAtLandingL / aircraft.fuelBurnLph) * 60)
+                  Math.abs((navLog.fuelRemainingAtLandingL / fuelBurnLph) * 60)
                 )}
               </div>
             </div>
@@ -1356,7 +1398,7 @@ export default function App() {
         <p className="panel-label">Flight plan (Norway VFR)</p>
         <FlightPlanTool
           waypoints={waypoints}
-          aircraft={aircraft}
+          aircraft={effectiveAircraft}
           navLog={navLog}
           cruiseAltitudeFt={cruiseAltitudeFt}
           defaultPob={1 + (passengerKg > 0 ? 1 : 0)}

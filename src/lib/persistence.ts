@@ -23,6 +23,7 @@ export interface PersistedPlan {
   luggageKg?: number
   mtowKg?: number
   emptyWeightKg?: number
+  fuelBurnLph?: number
 }
 
 let cachedLoad: PersistedPlan | null | undefined
