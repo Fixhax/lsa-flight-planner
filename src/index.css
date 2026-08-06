@@ -664,6 +664,78 @@ button:focus-visible {
   margin: 0;
 }
 
+.airfield-notes {
+  margin-bottom: 4px;
+}
+
+.airfield-note {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.airfield-note-body {
+  font-size: 0.82rem;
+  margin: 0 0 3px;
+  white-space: pre-wrap;
+}
+
+.airfield-note-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.airfield-note-delete {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.airfield-note-delete:hover {
+  color: var(--red);
+}
+
+.airfield-note-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 0.8rem;
+  resize: vertical;
+  margin-top: 8px;
+}
+
+.airfield-note-post-btn {
+  margin-top: 6px;
+  background: var(--panel);
+  border: 1px solid var(--cyan);
+  border-radius: 8px;
+  padding: 6px 12px;
+  color: var(--cyan);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.airfield-note-post-btn:hover:not(:disabled) {
+  background: rgba(79, 209, 197, 0.1);
+}
+
+.airfield-note-post-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .map-airfield-panel-actions {
   display: flex;
   flex-wrap: wrap;

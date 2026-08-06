@@ -129,3 +129,50 @@ export async function loadFlightTracks(userId: string): Promise<SavedFlightTrack
     points: row.points as TrackPoint[]
   }))
 }
+
+export interface AirfieldNote {
+  id: string
+  stripId: string
+  userId: string
+  authorEmail: string | null
+  body: string
+  createdAt: number
+}
+
+// Community tips on a curated airfield — shared across every signed-in
+// pilot, not just the author (unlike every other table in this file).
+// Only the author can delete their own note; there's no edit, since
+// delete-and-repost is simple enough for a short tip and avoids needing
+// to track edit history.
+export async function loadAirfieldNotes(stripId: string): Promise<AirfieldNote[]> {
+  if (!supabase) return []
+  const { data, error } = await supabase
+    .from('airfield_notes')
+    .select('id, strip_id, user_id, author_email, body, created_at')
+    .eq('strip_id', stripId)
+    .order('created_at', { ascending: false })
+  if (error || !data) return []
+  return data.map((row) => ({
+    id: row.id as string,
+    stripId: row.strip_id as string,
+    userId: row.user_id as string,
+    authorEmail: row.author_email as string | null,
+    body: row.body as string,
+    createdAt: new Date(row.created_at as string).getTime()
+  }))
+}
+
+export async function addAirfieldNote(
+  userId: string,
+  authorEmail: string | null,
+  stripId: string,
+  body: string
+): Promise<void> {
+  if (!supabase) return
+  await supabase.from('airfield_notes').insert({ user_id: userId, author_email: authorEmail, strip_id: stripId, body })
+}
+
+export async function deleteAirfieldNote(userId: string, id: string): Promise<void> {
+  if (!supabase) return
+  await supabase.from('airfield_notes').delete().eq('id', id).eq('user_id', userId)
+}

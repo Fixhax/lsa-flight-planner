@@ -8,6 +8,7 @@ import { airstrips, type AirstripEntry } from '../data/strips'
 import type { TrafficPatternResult } from '../lib/trafficPattern'
 import type { EngineOutTarget, UnverifiedSite } from '../lib/engineOut'
 import MapInfoDrawer from './MapInfoDrawer'
+import AirfieldNotes from './AirfieldNotes'
 import { useCloseOnOutsideClick } from '../hooks/useCloseOnOutsideClick'
 
 interface Props {
@@ -32,6 +33,8 @@ interface Props {
   engineOutLoading?: boolean
   engineOutError?: string | null
   onToggleEngineOut?: () => void
+  userId?: string | null
+  userEmail?: string | null
 }
 
 // Icon size doubles as the draggable hit-area (Leaflet centers it on
@@ -113,7 +116,9 @@ export default function RouteMap({
   engineOutSites,
   engineOutLoading = false,
   engineOutError,
-  onToggleEngineOut
+  onToggleEngineOut,
+  userId = null,
+  userEmail = null
 }: Props) {
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -1059,6 +1064,8 @@ export default function RouteMap({
               ) : (
                 <p className="map-airfield-panel-muted">No contact number on file.</p>
               )}
+              <p className="map-airfield-panel-subhead">Pilot notes</p>
+              <AirfieldNotes stripId={strip.id} userId={userId} userEmail={userEmail} />
               <div className="map-airfield-panel-actions">
                 <button
                   type="button"

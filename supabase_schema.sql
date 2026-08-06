@@ -66,3 +66,28 @@ create policy "delete own saved plans" on public.saved_plans
 
 create index if not exists saved_plans_user_updated_idx
   on public.saved_plans (user_id, updated_at desc);
+
+-- Community tips left on a curated airfield ("soft after rain", "PPR
+-- number changed", etc.) — unlike every table above, this one is shared:
+-- any signed-in pilot can read every note on a field, not just their own.
+-- Only the author can delete their own note.
+create table if not exists public.airfield_notes (
+  id uuid primary key default gen_random_uuid(),
+  strip_id text not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  author_email text,
+  body text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.airfield_notes enable row level security;
+
+create policy "select all airfield notes" on public.airfield_notes
+  for select using (auth.uid() is not null);
+create policy "insert own airfield notes" on public.airfield_notes
+  for insert with check (auth.uid() = user_id);
+create policy "delete own airfield notes" on public.airfield_notes
+  for delete using (auth.uid() = user_id);
+
+create index if not exists airfield_notes_strip_idx
+  on public.airfield_notes (strip_id, created_at desc);

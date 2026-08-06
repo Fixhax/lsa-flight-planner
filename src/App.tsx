@@ -969,6 +969,8 @@ export default function App() {
           engineOutLoading={engineOutLoading}
           engineOutError={engineOutError}
           onToggleEngineOut={handleToggleEngineOut}
+          userId={userId}
+          userEmail={session?.user.email ?? null}
         />
         <div className="pattern-controls">
           <p className="panel-sublabel">Landing pattern overlay</p>
