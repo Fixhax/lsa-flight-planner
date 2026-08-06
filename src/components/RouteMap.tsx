@@ -57,11 +57,15 @@ const midpointIcon = L.divIcon({
 // Every curated strip, shown always (not just ones in the current route) so
 // nearby fields are visible for reference — a distinct diamond shape and
 // muted color so they never compete visually with the active route/waypoints.
+// Same larger-tap-area-than-visible-mark trick as the waypoint/midpoint
+// icons above — the previous 10x10 hit area was hard to hit reliably with
+// a finger, especially with several fields close together at typical
+// zoom levels.
 const airfieldIcon = L.divIcon({
   className: 'map-airfield-icon',
   html: '<div class="map-airfield-diamond"></div>',
-  iconSize: [10, 10],
-  iconAnchor: [5, 5]
+  iconSize: [28, 28],
+  iconAnchor: [14, 14]
 })
 
 // A simple top-down airplane silhouette, nose pointing up (0deg = north),
@@ -166,12 +170,10 @@ export default function RouteMap({
   // plain Leaflet popup, so it can show richer info (frequencies, PPR
   // contact) and offer the same start/destination/waypoint actions the
   // long-press menu has, prefilled with everything known about the field
-  // rather than just bare coordinates.
-  const [selectedAirfield, setSelectedAirfield] = useState<{
-    strip: AirstripEntry
-    screenX: number
-    screenY: number
-  } | null>(null)
+  // rather than just bare coordinates. Fixed-centered on screen (see the
+  // CSS) rather than anchored to the tapped marker, so it's readable and
+  // reachable regardless of where on the map you tapped.
+  const [selectedAirfield, setSelectedAirfield] = useState<AirstripEntry | null>(null)
 
   // "Direct to" target, only meaningful while GPS is on — draws a live
   // guidance line from the aircraft's current position to this point
@@ -414,13 +416,9 @@ export default function RouteMap({
     // populated once here rather than in the per-render redraw effect.
     airstrips.forEach((strip) => {
       const marker = L.marker([strip.lat, strip.lon], { icon: airfieldIcon })
-      marker.on('click', (e: L.LeafletMouseEvent) => {
-        const wrap = wrapRef.current
-        const orig = e.originalEvent
-        if (!wrap) return
-        const rect = wrap.getBoundingClientRect()
+      marker.on('click', () => {
         setLongPressMenu(null)
-        setSelectedAirfield({ strip, screenX: orig.clientX - rect.left, screenY: orig.clientY - rect.top })
+        setSelectedAirfield(strip)
       })
       marker.addTo(airfieldLayerRef.current!)
     })
@@ -1001,13 +999,14 @@ export default function RouteMap({
       )}
       {selectedAirfield &&
         (() => {
-          const strip = selectedAirfield.strip
+          const strip = selectedAirfield
           return (
-            <div
-              ref={airfieldPanelRef}
-              className="map-airfield-panel"
-              style={{ left: selectedAirfield.screenX, top: selectedAirfield.screenY }}
-            >
+            <div className="map-airfield-backdrop" onClick={() => setSelectedAirfield(null)}>
+              <div
+                ref={airfieldPanelRef}
+                className="map-airfield-panel"
+                onClick={(e) => e.stopPropagation()}
+              >
               <button
                 type="button"
                 className="map-airfield-panel-close"
@@ -1094,6 +1093,7 @@ export default function RouteMap({
                 >
                   + Add waypoint
                 </button>
+              </div>
               </div>
             </div>
           )

@@ -121,6 +121,9 @@ export const airstrips: AirstripEntry[] = [
     lengthM: 470,
     elevationFt: 312,
     runway: '06/24',
+    frequencies: [
+      { type: 'Common/traffic', mhz: 123.065, note: 'Norwegian common frequency for uncontrolled areas (enroute, blind calls) — not exclusive to Henning' }
+    ],
     note: 'Home of Innherred Flyklubb'
   },
   {

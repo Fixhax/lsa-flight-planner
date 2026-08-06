@@ -578,12 +578,25 @@ button:focus-visible {
   border-top: 1px solid var(--border);
 }
 
-.map-airfield-panel {
-  position: absolute;
+/* Fixed-centered on screen rather than anchored to the tapped marker —
+   readable and reachable regardless of where on the map you tapped, and
+   never clipped off-screen near an edge the way a marker-anchored popup
+   could be. The backdrop dims the map and doubles as a tap-outside-to-
+   close target. */
+.map-airfield-backdrop {
+  position: fixed;
+  inset: 0;
   z-index: 2000;
-  transform: translate(-50%, calc(-100% - 14px));
-  width: min(280px, calc(100vw - 32px));
-  max-height: min(420px, calc(100vh - 32px));
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.map-airfield-panel {
+  width: min(320px, 100%);
+  max-height: min(480px, calc(100vh - 32px));
   overflow-y: auto;
   background: var(--panel-raised);
   border: 1px solid var(--cyan);
@@ -2072,6 +2085,12 @@ button:focus-visible {
 }
 
 /* ---------- airfield markers (always shown) ---------- */
+
+.map-airfield-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 .map-airfield-diamond {
   width: 8px;
