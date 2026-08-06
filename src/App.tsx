@@ -289,7 +289,7 @@ export default function App() {
   const [engineOutLoading, setEngineOutLoading] = useState(false)
   const [engineOutError, setEngineOutError] = useState<string | null>(null)
   const [timerStatus, setTimerStatus] = useState<string | null>(null)
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['aircraft']))
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['route']))
   // Which category tab is showing in the Aircraft panel's picker — synced
   // to match whenever the actually-selected aircraft's category changes
   // (e.g. picked from the header dropdown), but otherwise left alone so
@@ -987,6 +987,8 @@ export default function App() {
           onToggleEngineOut={handleToggleEngineOut}
           userId={userId}
           userEmail={session?.user.email ?? null}
+          canUndoWaypoint={waypointHistory.length > 0}
+          onUndoWaypoint={undoWaypoints}
         />
         <div className="pattern-controls">
           <p className="panel-sublabel">Landing pattern overlay</p>

@@ -35,6 +35,8 @@ interface Props {
   onToggleEngineOut?: () => void
   userId?: string | null
   userEmail?: string | null
+  canUndoWaypoint?: boolean
+  onUndoWaypoint?: () => void
 }
 
 // Icon size doubles as the draggable hit-area (Leaflet centers it on
@@ -91,9 +93,13 @@ function liveIcon(headingDeg?: number) {
 }
 
 // Default view centered over the Norway/Sweden strip data this app is
-// scoped to, used until there are waypoints to fit bounds to.
+// scoped to, used until there are waypoints to fit bounds to. Zoom 8 puts
+// roughly 100nm across a typical phone-width viewport at this latitude
+// (156543 * cos(63°) / 2^8 ≈ 278 m/px) — a useful "local area" scale for
+// picking a departure field, rather than the whole-Scandinavia view a
+// lower zoom would open on.
 const DEFAULT_CENTER: L.LatLngExpression = [63, 13]
-const DEFAULT_ZOOM = 5
+const DEFAULT_ZOOM = 8
 
 // Zoom level to snap to when "Follow" is first turned on — roughly a 5km
 // view width at typical screen sizes and latitudes.
@@ -122,7 +128,9 @@ export default function RouteMap({
   engineOutError,
   onToggleEngineOut,
   userId = null,
-  userEmail = null
+  userEmail = null,
+  canUndoWaypoint = false,
+  onUndoWaypoint
 }: Props) {
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -140,9 +148,12 @@ export default function RouteMap({
   onToggleFullscreenRef.current = onToggleFullscreen
   const onToggleEngineOutRef = useRef(onToggleEngineOut)
   onToggleEngineOutRef.current = onToggleEngineOut
+  const onUndoWaypointRef = useRef(onUndoWaypoint)
+  onUndoWaypointRef.current = onUndoWaypoint
   const followBtnRef = useRef<HTMLButtonElement | null>(null)
   const infoBtnRef = useRef<HTMLButtonElement | null>(null)
   const engineOutBtnRef = useRef<HTMLButtonElement | null>(null)
+  const undoBtnRef = useRef<HTMLButtonElement | null>(null)
   const wasFollowingRef = useRef(false)
   const longPressMenuRef = useRef<HTMLDivElement | null>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -317,6 +328,23 @@ export default function RouteMap({
       }
     })
     new EngineOutControl({ position: 'topleft' }).addTo(map)
+
+    // Undo the last route edit — same action as the Undo button in the
+    // waypoint list below, exposed here too so it's reachable without
+    // scrolling away from the map while actively tapping/dragging waypoints.
+    const UndoControl = L.Control.extend({
+      onAdd: function () {
+        const btn = L.DomUtil.create('button', 'map-undo-btn')
+        btn.type = 'button'
+        btn.innerHTML = '&#8630;'
+        btn.title = 'Undo last route edit'
+        L.DomEvent.disableClickPropagation(btn)
+        btn.onclick = () => onUndoWaypointRef.current?.()
+        undoBtnRef.current = btn
+        return btn
+      }
+    })
+    new UndoControl({ position: 'topleft' }).addTo(map)
 
     // Manually panning the map means the pilot wants to look elsewhere —
     // drop out of follow mode rather than keep fighting their drag on the
@@ -761,6 +789,10 @@ export default function RouteMap({
   useEffect(() => {
     engineOutBtnRef.current?.classList.toggle('active', engineOutActive)
   }, [engineOutActive])
+
+  useEffect(() => {
+    if (undoBtnRef.current) undoBtnRef.current.disabled = !canUndoWaypoint
+  }, [canUndoWaypoint])
 
   // Rotates the whole map to the manually-chosen direction, by CSS-rotating
   // the container itself — tiles and markers (including the live plane

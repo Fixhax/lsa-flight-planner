@@ -220,8 +220,27 @@ export function useDeviceOrientation(active = true) {
       }
     }
 
+    // Chrome on Android fires a SEPARATE 'deviceorientationabsolute' event
+    // for magnetometer-referenced heading — its plain 'deviceorientation'
+    // event can report absolute:false even when the device has a working
+    // compass, so listening to 'deviceorientation' alone silently starves
+    // this of any usable heading on those devices (heading stays null
+    // forever, and the bearing line above never renders — no error, it
+    // just looks like it's ignoring the selected target). Listening to
+    // both is harmless: each event is independently checked for a usable
+    // absolute heading before being used, so there's no double-counting.
     window.addEventListener('deviceorientation', handleOrientation)
-    return () => window.removeEventListener('deviceorientation', handleOrientation)
+    window.addEventListener(
+      'deviceorientationabsolute',
+      handleOrientation as unknown as EventListener
+    )
+    return () => {
+      window.removeEventListener('deviceorientation', handleOrientation)
+      window.removeEventListener(
+        'deviceorientationabsolute',
+        handleOrientation as unknown as EventListener
+      )
+    }
   }, [permission, active])
 
   return { permission, orientation, heading, turnRateDegPerSec, error, requestPermission }

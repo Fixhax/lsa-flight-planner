@@ -2166,6 +2166,25 @@ button:focus-visible {
   color: #fff;
 }
 
+.map-undo-btn {
+  width: 44px;
+  height: 44px;
+  background: var(--panel-raised);
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.map-undo-btn:hover:not(:disabled) {
+  background: var(--panel);
+}
+
+.map-undo-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 .map-engineout-error {
   position: absolute;
   left: 10px;
