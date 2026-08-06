@@ -9,6 +9,17 @@ export function useGpsTracking(
   const [position, setPosition] = useState<LivePosition | null>(null)
   const [error, setError] = useState<string | null>(null)
   const watchIdRef = useRef<number | null>(null)
+  // Per the Geolocation spec, coords.heading is NaN (not null) whenever the
+  // device's reported speed is ~0 — i.e. every time you're stationary, not
+  // just when heading genuinely isn't supported. That NaN slips straight
+  // past a `?? undefined` fallback (NaN isn't null/undefined), so it used
+  // to reach the map as a real "heading" value and render as an invalid
+  // rotate(NaNdeg) transform, which browsers silently drop — leaving the
+  // plane icon stuck at its unrotated, north-up default. Holding onto the
+  // last known-good heading here instead means the icon keeps pointing the
+  // way you were actually going through a momentary stop, rather than
+  // snapping to north every time the GPS can't compute a fresh course.
+  const lastHeadingRef = useRef<number | undefined>(undefined)
 
   useEffect(() => {
     onPositionChange(position)
@@ -32,11 +43,14 @@ export function useGpsTracking(
     setError(null)
     const id = navigator.geolocation.watchPosition(
       (pos) => {
+        const rawHeading = pos.coords.heading
+        const headingDeg = Number.isFinite(rawHeading) ? (rawHeading as number) : lastHeadingRef.current
+        if (headingDeg !== undefined) lastHeadingRef.current = headingDeg
         setPosition({
           lat: pos.coords.latitude,
           lon: pos.coords.longitude,
           speedKt: pos.coords.speed != null ? pos.coords.speed * 1.94384 : undefined,
-          headingDeg: pos.coords.heading ?? undefined,
+          headingDeg,
           // Not every device/GPS chip reports altitude — falls back to the
           // planned cruise altitude wherever this is used when absent.
           altitudeFt: pos.coords.altitude != null ? pos.coords.altitude * 3.28084 : undefined,
@@ -65,6 +79,7 @@ export function useGpsTracking(
     }
     setTracking(false)
     setPosition(null)
+    lastHeadingRef.current = undefined
   }
 
   useEffect(() => {
