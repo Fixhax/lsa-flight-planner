@@ -286,11 +286,16 @@ export const airstrips: AirstripEntry[] = [
   {
     id: 'no-froya-flatval',
     name: 'Fr\u00f8ya, Flatval',
+    icao: 'ENFA',
     country: 'NO',
     region: 'Tr\u00f8ndelag',
     surface: 'grass',
     lat: 63.7005,
-    lon: 8.7604
+    lon: 8.7604,
+    lengthM: 1199,
+    elevationFt: 152,
+    runway: '04/22',
+    note: 'Surface is actually paved (asphalt), not grass \u2014 Fr\u00f8ya flyplass, Flatval per Wikipedia; runway extended to current 1,199m with lighting added in late 2023; elevation 46.3m/152ft. Not certified for aircraft over 5.7t/10 seats; former home of the now-disbanded Fr\u00f8ya Flyklubb'
   },
   {
     id: 'no-brekken-bergosen',
@@ -308,7 +313,11 @@ export const airstrips: AirstripEntry[] = [
     region: 'Tr\u00f8ndelag',
     surface: 'grass',
     lat: 63.6286,
-    lon: 9.7269
+    lon: 9.7269,
+    lengthM: 500,
+    elevationFt: 259,
+    runway: '07/25',
+    note: 'Grass surface confirmed \u2014 per Wikidata (Agdenes Airport, Q11957004): runway 07/25, 500\u00d78m, elevation 79m/259ft'
   },
   {
     id: 'no-gossen',
@@ -327,7 +336,11 @@ export const airstrips: AirstripEntry[] = [
     region: 'Tr\u00f8ndelag',
     surface: 'grass',
     lat: 63.1979,
-    lon: 10.2906
+    lon: 10.2906,
+    lengthM: 700,
+    elevationFt: 151,
+    runway: '17/35',
+    note: 'Grass surface confirmed \u2014 also known as Losen flystripe, home of Gauldal Seilflyklubb since 1995 \u2014 per Wikidata (Ler Airport, Q11983769): runway 17/35, 700\u00d725m, elevation 46m/151ft'
   },
   {
     id: 'no-gravvold-surnadal',
@@ -336,7 +349,11 @@ export const airstrips: AirstripEntry[] = [
     region: 'M\u00f8re og Romsdal',
     surface: 'grass',
     lat: 63.0549,
-    lon: 8.7139
+    lon: 8.7139,
+    lengthM: 630,
+    elevationFt: 151,
+    runway: '07/25',
+    note: 'Grass surface confirmed \u2014 operated by Surnadal Luftsportsklubb \u2014 per Wikidata (Gravvold Airport, Q17778382): runway 07/25, 630\u00d720m, elevation 46m/151ft'
   },
   {
     id: 'no-fiske-surnadal',
@@ -365,9 +382,13 @@ export const airstrips: AirstripEntry[] = [
     name: 'Wadahl',
     country: 'NO',
     region: 'Innlandet',
-    surface: 'grass',
+    surface: 'gravel',
     lat: 61.4994,
-    lon: 9.7982
+    lon: 9.7982,
+    lengthM: 500,
+    elevationFt: 3150,
+    runway: '15/33',
+    note: 'Surface corrected to mixed gravel/grass ("Grus og gress"), not pure grass — per Wikipedia (Wadahl flyplass); opened 1970 near Wadahl Høgfjellshotel at Gålå, extended from under 330m to the current 500×8m; elevation 950m/3150ft, described as "probably Norway’s highest-lying airfield"'
   },
   {
     id: 'no-frya',
@@ -397,11 +418,16 @@ export const airstrips: AirstripEntry[] = [
   {
     id: 'no-reinsvoll',
     name: 'Reinsvoll',
+    icao: 'ENRV',
     country: 'NO',
     region: 'Innlandet',
-    surface: 'grass',
+    surface: 'gravel',
     lat: 60.6737,
-    lon: 10.5655
+    lon: 10.5655,
+    lengthM: 600,
+    elevationFt: 1381,
+    runway: '16/34',
+    note: 'Surface corrected to gravel, not grass \u2014 per Wikidata (Reinsvoll Airport, Q19386419): runway 16/34, 600\u00d720m, elevation 421m/1381ft; operated by Gj\u00f8vik og Toten Flyklubb'
   },
   {
     id: 'no-husodden',
@@ -411,7 +437,10 @@ export const airstrips: AirstripEntry[] = [
     surface: 'grass',
     lat: 60.7478,
     lon: 10.2383,
-    note: 'Also a registered seaplane base'
+    lengthM: 600,
+    elevationFt: 450,
+    runway: '14/32',
+    note: 'Grass surface confirmed \u2014 per Wikipedia (Husodden flyplass): runway 14/32, 600m, elevation 140m/450ft; established 1991 by landowner Lars Nordraak on the Husodden peninsula, Randsfjorden. Also a registered seaplane base'
   },
   {
     id: 'no-boverbu',
@@ -420,7 +449,18 @@ export const airstrips: AirstripEntry[] = [
     region: 'Innlandet',
     surface: 'grass',
     lat: 60.6373,
-    lon: 10.6769
+    lon: 10.6769,
+    lengthM: 600,
+    elevationFt: 1330,
+    runway: '18/36',
+    frequencies: [
+      {
+        type: 'Local/blind calls',
+        mhz: 123.065,
+        note: 'The field\u2019s own page publishes 123.500 MHz for blind reporting \u2014 that frequency is obsolete nationally, superseded by 123.065 (see this app\u2019s reference frequency list), so listed here as 123.065 instead'
+      }
+    ],
+    note: 'Grass surface confirmed \u2014 matches Wikipedia\u2019s "B\u00f8verbru flyplass" (likely the same field as this entry, whose name here is missing the final "r" \u2014 coordinates match closely, worth double-checking): runway 18/36, 600\u00d730m, elevation 405.4m/1330ft; established by farm owner Jan Stikbakke with Seilflyklubben Mj\u00f8sa (disbanded 2013), now operated by Ringerike Mikroflyklubb'
   },
   {
     id: 'no-folldal-grimsmoen',
@@ -456,7 +496,11 @@ export const airstrips: AirstripEntry[] = [
     region: 'Innlandet',
     surface: 'grass',
     lat: 61.8395,
-    lon: 11.7302
+    lon: 11.7302,
+    lengthM: 800,
+    elevationFt: 1900,
+    runway: '02/20',
+    note: 'Per airportguide.com (S\u00f8lenstua Airfield, EN25), in Rendalen: runway 02/20, approx. 800\u00d712m, field elevation 1900ft/579m MSL. That is an aviation-reference aggregator rather than an official/primary source, so treat with more caution than Wikipedia-sourced entries in this list; surface not stated by that source, left as default grass'
   },
   {
     id: 'no-aera',
@@ -681,15 +725,6 @@ export const airstrips: AirstripEntry[] = [
     note: 'Grass surface confirmed — per Stryn Luftsportsklubb (strynluftsport.no); PPR required, two hangars and a clubhouse on site'
   },
   {
-    id: 'no-orsta-hovden',
-    name: '\u00d8rsta, Hovden',
-    country: 'NO',
-    region: 'M\u00f8re og Romsdal',
-    surface: 'grass',
-    lat: 62.1797,
-    lon: 6.0714
-  },
-  {
     id: 'no-voss-bomoen',
     name: 'Voss, B\u00f8moen',
     icao: 'ENBM',
@@ -706,12 +741,16 @@ export const airstrips: AirstripEntry[] = [
   {
     id: 'no-os-vaksinen',
     name: 'Os, Vaksinen (Ulven)',
+    icao: 'ENUL',
     country: 'NO',
     region: 'Vestland',
     surface: 'grass',
     lat: 60.1911,
     lon: 5.4202,
-    note: 'Restricted \u2014 gliders and PPL only per source, not open GA use'
+    lengthM: 700,
+    elevationFt: 180,
+    runway: '05/23',
+    note: 'Grass (north) / gravel (south) surface \u2014 per Os Aero Klubb\u2019s own site (osaero.webnode.page): runway 05/23, 700m total. Elevation per Wikipedia (Os flyplass, Vaksinen) is 54.9m/180ft, used here; the club\u2019s own site instead states 200ft \u2014 flagging that discrepancy rather than picking silently. Approved for glider operations only, with motor activity limited to the club\u2019s tow aircraft. Restricted \u2014 gliders and PPL only per source, not open GA use'
   },
   {
     id: 'no-stord-sorstokken',
@@ -829,7 +868,9 @@ export const airstrips: AirstripEntry[] = [
     region: 'Telemark',
     surface: 'grass',
     lat: 59.2021,
-    lon: 8.0878
+    lon: 8.0878,
+    lengthM: 800,
+    note: 'Surface is actually paved (asphalt), not grass — Vest-Telemark Airport, Fyresdal per Wikipedia; declared runway length 800m, though physical length is 1,400m; private airfield operated by the local aeroclub and Fyresdal kommune since 2009, no scheduled service currently. Elevation and runway heading not confirmed'
   },
   {
     id: 'no-gaundalen',
@@ -866,20 +907,30 @@ export const airstrips: AirstripEntry[] = [
   {
     id: 'se-sunne',
     name: 'Sunne',
+    icao: 'ESKU',
     country: 'SE',
     region: 'V\u00e4rmland',
     surface: 'grass',
     lat: 59.8543,
-    lon: 13.1028
+    lon: 13.1028,
+    lengthM: 770,
+    elevationFt: 380,
+    runway: '01/19',
+    note: 'Grass surface confirmed \u2014 Sunne-Holmby flygplats per Wikipedia: runway 01/19, 770\u00d7100m, elevation 116m/380ft; home of Sunne Flygklubb'
   },
   {
     id: 'se-hedlanda',
     name: 'Hedlanda',
+    icao: 'ESNC',
     country: 'SE',
     region: 'J\u00e4mtland',
     surface: 'grass',
     lat: 62.4103,
-    lon: 13.7448
+    lon: 13.7448,
+    lengthM: 1175,
+    elevationFt: 1460,
+    runway: '06/24',
+    note: 'Surface is actually paved (asphalt), not grass \u2014 Hedlanda flygplats per Wikipedia: runway 06/24, elevation 445m/1460ft. Opened 1970 by Hede municipality, runway extended from 1,000m to current 1,175m in 2007; operated by Hedlanda flygf\u00f6rening; no rescue services on site, so limited to aircraft with max 19 passengers'
   },
   {
     id: 'se-hagfors',
@@ -926,11 +977,16 @@ export const airstrips: AirstripEntry[] = [
   {
     id: 'se-orsa',
     name: 'Orsa',
+    icao: 'ESNR',
     country: 'SE',
     region: 'Dalarna',
     surface: 'grass',
     lat: 61.19,
-    lon: 14.7122
+    lon: 14.7122,
+    lengthM: 900,
+    elevationFt: 682,
+    runway: '15/33',
+    note: 'Grass surface confirmed \u2014 Orsa-Tallheds flygf\u00e4lt per Wikipedia: grass runway 15/33 (900\u00d740m) used by aircraft, plus a separate paved 03/21 runway (1,000\u00d730m) used mainly for motorsports; elevation 208m/682ft. Built by the Swedish Air Force 1940\u20131943'
   },
   {
     id: 'se-optand',
@@ -939,7 +995,11 @@ export const airstrips: AirstripEntry[] = [
     region: 'J\u00e4mtland',
     surface: 'grass',
     lat: 63.1296,
-    lon: 14.802
+    lon: 14.802,
+    lengthM: 1000,
+    elevationFt: 1236,
+    runway: '18/36',
+    note: 'Surface: the primary runway (18/36, 1,000\u00d718m) is actually paved asphalt, per Wikipedia (\u00d6stersund-Optand flygf\u00e4lt); two additional grass strips also present (15/33, 750\u00d740m, and a second 18/36, 800\u00d725m). Elevation 376m/1236ft. Former WWII-era military "F\u00e4lt 26" (used 1939\u20132004), now owned by \u00d6stersunds flygklubb and used by GA, gliding, skydiving and model-aircraft clubs plus aviation museums'
   },
   {
     id: 'se-hemavan',
@@ -958,11 +1018,16 @@ export const airstrips: AirstripEntry[] = [
   {
     id: 'se-hallviken',
     name: 'Hallviken',
+    icao: 'ESNA',
     country: 'SE',
     region: 'J\u00e4mtland',
     surface: 'grass',
     lat: 63.738,
-    lon: 15.4594
+    lon: 15.4594,
+    lengthM: 1000,
+    elevationFt: 1119,
+    runway: '14/32',
+    note: 'Surface: the primary runway (14/32, 1,000\u00d730m) is actually paved asphalt, per Wikipedia (Hallvikens flygf\u00e4lt); two more runways also present \u2014 02/20 (800\u00d730m, asphalt) and 08/26 (800\u00d730m, gravel). Elevation 341m/1119ft. Former WWII-era military airfield (Field 27, built 1940\u201343), opened to civil traffic in 1955'
   },
   {
     id: 'se-alingsas',
@@ -990,29 +1055,44 @@ export const airstrips: AirstripEntry[] = [
   {
     id: 'se-fjallbacka-anras',
     name: 'Fj\u00e4llbacka, Anr\u00e5s',
+    icao: 'ESTF',
     country: 'SE',
     region: 'V\u00e4stra G\u00f6taland',
     surface: 'grass',
     lat: 58.6302,
-    lon: 11.3149
+    lon: 11.3149,
+    lengthM: 740,
+    elevationFt: 6,
+    runway: '06/24',
+    note: 'Grass surface confirmed \u2014 Fj\u00e4llbacka flygf\u00e4lt per Wikipedia: runway 06/24, 740m, elevation 6ft. Opened 1987 on land at Lilla Anr\u00e5s leased by Roland Broberg, purchased by Tanums kommun in 1995; approx. 300 landings/year'
   },
   {
     id: 'se-uddevalla-rorkarr',
     name: 'Uddevalla, R\u00f6rk\u00e4rr',
+    icao: 'ESGU',
     country: 'SE',
     region: 'V\u00e4stra G\u00f6taland',
     surface: 'grass',
     lat: 58.367,
-    lon: 11.7746
+    lon: 11.7746,
+    lengthM: 655,
+    elevationFt: 120,
+    runway: '03/21',
+    note: 'Grass surface confirmed \u2014 R\u00f6rk\u00e4rr flygf\u00e4lt per Wikipedia: runway 03/21, 655m, elevation 36m/120ft. Owned/operated by Uddevalla Flygklubb; B\u00e5ngens golf course surrounds the field, golfers cross the runway at three points during a round'
   },
   {
     id: 'se-uddevalla-backamo',
     name: 'Uddevalla, Backamo',
+    icao: 'ESGA',
     country: 'SE',
     region: 'V\u00e4stra G\u00f6taland',
     surface: 'grass',
     lat: 58.1771,
-    lon: 11.9736
+    lon: 11.9736,
+    lengthM: 760,
+    elevationFt: 424,
+    runway: '06/24',
+    note: 'Grass surface confirmed \u2014 Backamo flygf\u00e4lt per Wikipedia: runway nominally 060\u00b0/240\u00b0 (06/24), 760\u00d730m, elevation 129m/424ft. Built 1937\u201338 as one of a chain of emergency landing fields decided by parliament in 1932; used today by Backamo Flygklubb and others'
   },
   {
     id: 'se-bondestroms-gard',
@@ -1021,16 +1101,20 @@ export const airstrips: AirstripEntry[] = [
     region: 'V\u00e4stra G\u00f6taland',
     surface: 'grass',
     lat: 58.1491,
-    lon: 12.1263
+    lon: 12.1263,
+    note: 'Grass surface confirmed ("F\u00e4ltyta: Gr\u00e4s") per the field\u2019s own listing on flygkartan.se; private field, strict PPR, under Gothenburg TMA. Operational status uncertain \u2014 a 2017 visitor review on the same site described it as closed, though an earlier one described it as active; confirm current status before planning to use it. Length/elevation/runway not confirmed'
   },
   {
     id: 'se-eksharad',
     name: 'Eksh\u00e4rad flygf\u00e4lt',
+    icao: 'ESKH',
     country: 'SE',
     region: 'V\u00e4rmland',
     surface: 'grass',
     lat: 60.154,
-    lon: 13.5298
+    lon: 13.5298,
+    elevationFt: 460,
+    note: 'Elevation per world-airport-codes.com/SkyVector (surface there is only described as "soft", consistent with grass but not independently detailed). Length and runway heading not confirmed'
   },
   {
     id: 'se-backa',
@@ -1039,34 +1123,35 @@ export const airstrips: AirstripEntry[] = [
     region: 'V\u00e4rmland',
     surface: 'grass',
     lat: 60.5308,
-    lon: 13.1218
+    lon: 13.1218,
+    note: 'Likely a duplicate of the "Finnskoga, Backa" entry elsewhere in this list (se-finnskoga-backa) \u2014 coordinates are ~2km apart and both appear to reference the same Backa/Finnskoga grass airfield near Klar\u00e4lven in Torsby kommun. Flagging for review rather than merging entries; no other data added here'
   },
   {
     id: 'se-malung-skinnlanda',
     name: 'Malung, Skinnlanda',
+    icao: 'ESVM',
     country: 'SE',
     region: 'Dalarna',
     surface: 'grass',
     lat: 60.6591,
-    lon: 13.7266
+    lon: 13.7266,
+    lengthM: 800,
+    elevationFt: 975,
+    runway: '16/34',
+    note: 'Surface is actually paved (asphalt), not grass \u2014 per the field\u2019s own site (malungsflygklubb.se/skinnlanda): 800\u00d724m, elevation 975ft, right-hand traffic on runway 16 (implying 16/34). 3km south of Malung center'
   },
   {
     id: 'se-siljansnas',
     name: 'Siljansn\u00e4s Airpark',
+    icao: 'ESVS',
     country: 'SE',
     region: 'Dalarna',
     surface: 'grass',
     lat: 60.7851,
-    lon: 14.8269
-  },
-  {
-    id: 'se-salenfjallen',
-    name: 'S\u00e4lenfj\u00e4llen',
-    country: 'SE',
-    region: 'Dalarna',
-    surface: 'grass',
-    lat: 61.1584,
-    lon: 12.8423
+    lon: 14.8269,
+    lengthM: 850,
+    runway: '14/32',
+    note: 'Grass surface confirmed \u2014 per Wikipedia (Siljan Airpark): two parallel 850m runways, one asphalt (14R/32L) and one grass (14L/32R); the grass one matches this entry\u2019s default surface. Private residential airpark inaugurated 2009, home of Siljansn\u00e4s Flygklubb (founded 1959). Elevation not confirmed'
   },
   {
     id: 'se-finnskoga-backa',
@@ -1075,16 +1160,21 @@ export const airstrips: AirstripEntry[] = [
     region: 'V\u00e4rmland',
     surface: 'grass',
     lat: 60.5534,
-    lon: 13.1024
+    lon: 13.1024,
+    lengthM: 650,
+    note: 'Grass surface confirmed \u2014 grass field approx. 650\u00d730m near Klar\u00e4lven, just north of a power line, per flygkartan.se; established early 1970s by Lennart Berglund and others in Liken\u00e4s, just south of Bran\u00e4s. Possibly the same field as the separate "Backa" entry elsewhere in this list (se-backa) \u2014 flagging as a likely duplicate rather than merging. Elevation/runway not confirmed'
   },
   {
     id: 'se-alvdalen',
     name: '\u00c4lvdalen',
     country: 'SE',
     region: 'Dalarna',
-    surface: 'grass',
+    surface: 'gravel',
     lat: 61.2141,
-    lon: 14.0445
+    lon: 14.0445,
+    lengthM: 670,
+    elevationFt: 750,
+    note: 'Surface corrected to gravel ("oljegrus", oiled gravel, with grass shoulders), not pure grass \u2014 per \u00c4lvdalens Flygklubb\u2019s own site (alvdalsflyg.se): runway 670m long, 7m wide (11m grass shoulders each side), elevation 750ft. Runway heading not stated by that source'
   },
   {
     id: 'se-funasdalen',
@@ -1093,16 +1183,19 @@ export const airstrips: AirstripEntry[] = [
     region: 'J\u00e4mtland',
     surface: 'grass',
     lat: 62.5222,
-    lon: 12.5954
+    lon: 12.5954,
+    note: 'Confirmed helicopter-only facility \u2014 "H\u00e4rjedalens helikopterstation/heliport" near Ljusnedal, in Fun\u00e4sdalen\u2019s eastern industrial area, historically a secondary base for J\u00e4mtlands Flyg (ceased operations 2019). No fixed-wing runway, so not usable by fixed-wing LSA aircraft \u2014 surface/length/elevation intentionally left as-is/blank since there is no runway to describe'
   },
   {
     id: 'se-oviken-graftavallen',
     name: 'Oviken, Gr\u00e4ft\u00e5vallen',
     country: 'SE',
     region: 'J\u00e4mtland',
-    surface: 'grass',
+    surface: 'gravel',
     lat: 63.0382,
-    lon: 14.0014
+    lon: 14.0014,
+    lengthM: 900,
+    note: 'Surface corrected to gravel ("mycket fint grusstr\u00e5k", a very fine gravel strip), not grass \u2014 per flygkartan.se; approx. 900m long. Caution advised for wind from south-southwest to north-northwest (turbulence behind the mountain). Width/orientation/elevation not confirmed'
   },
   {
     id: 'se-svenstavik',
@@ -1133,22 +1226,14 @@ export const airstrips: AirstripEntry[] = [
     lon: 13.4225
   },
   {
-    id: 'se-vilhelmina-sagadal',
-    name: 'Vilhelmina, Sagadal',
-    country: 'SE',
-    region: 'V\u00e4sterbotten',
-    surface: 'grass',
-    lat: 64.5785,
-    lon: 16.8333
-  },
-  {
     id: 'se-goviken',
     name: 'G\u00f6viken Heli Port & Sj\u00f6flygplats',
     country: 'SE',
     region: 'J\u00e4mtland',
     surface: 'grass',
     lat: 63.1922,
-    lon: 14.6308
+    lon: 14.6308,
+    note: 'Confirmed helicopter-only facility per Wikipedia (G\u00f6viken Heliport) \u2014 home base of J\u00e4mtlands Flyg AB, single helipad (asphalt, ~30m), elevation 473m/1552ft, no IATA/ICAO code. No fixed-wing runway despite the "Sj\u00f6flygplats" (seaplane base) part of this entry\u2019s name \u2014 not usable by fixed-wing LSA aircraft; surface/length/elevation intentionally left as-is/blank since there is no runway to describe'
   },
   {
     id: 'se-alaasen',
@@ -1208,7 +1293,11 @@ export const airstrips: AirstripEntry[] = [
     region: '\u00d8stfold',
     surface: 'grass',
     lat: 59.5337,
-    lon: 11.2428
+    lon: 11.2428,
+    lengthM: 312,
+    elevationFt: 300,
+    runway: '18/36',
+    note: 'Grass surface confirmed \u2014 per Wikipedia (Eidsberg flyplass): two grass runways, 18/36 (312\u00d715m) and 11/29 (280\u00d715m); elevation 91.4m/300ft; established 1997'
   },
   {
     id: 'no-huseby',
@@ -1245,7 +1334,9 @@ export const airstrips: AirstripEntry[] = [
     surface: 'grass',
     lat: 60.9285,
     lon: 5.1587,
-    lengthM: 210
+    lengthM: 210,
+    elevationFt: 138,
+    note: 'Elevation per OurAirports (Rompene Airfield, NO-0042): field elevation 42m/138ft. Home of Gulen Luftsportklubb, which holds an annual "Multifly" fly-in here. The pre-existing 210m length figure was not independently reconfirmed by this pass — runway heading not confirmed'
   },
   {
     id: 'no-ruteig',
@@ -1292,7 +1383,16 @@ export const airstrips: AirstripEntry[] = [
     surface: 'grass',
     lat: 63.696,
     lon: 11.226,
-    note: 'Only by prior arrangement per source \u2014 not open-access'
+    lengthM: 500,
+    runway: '04/22',
+    frequencies: [
+      {
+        type: 'Local',
+        mhz: 123.065,
+        note: 'The field\u2019s own site (skognflyplass.no) publishes 123.5 MHz as the local frequency \u2014 that frequency is obsolete nationally, superseded by 123.065 (see this app\u2019s reference frequency list), so listed here as 123.065 instead'
+      }
+    ],
+    note: 'Grass surface confirmed \u2014 per the field\u2019s own site (skognflyplass.no): approx. 500\u00d720m, runway 04/22; operates under V\u00e6rnes TMA, contact V\u00e6rnes Approach on 118.6 MHz before/after flight. Only by prior arrangement per source \u2014 not open-access'
   },
   {
     id: 'no-sor-reime',
