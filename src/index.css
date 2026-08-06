@@ -2320,6 +2320,49 @@ button:focus-visible {
   gap: 6px;
 }
 
+.map-info-target-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.map-info-target-picker label {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.map-info-target-picker select {
+  flex: 1;
+  min-width: 0;
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.map-info-route-check-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+
+.map-info-route-check-row:last-child {
+  border-bottom: none;
+}
+
+.map-info-route-check-label {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.map-info-route-check-summary {
+  color: var(--text-muted);
+}
+
 .route-map-wrap-fullscreen {
   position: fixed !important;
   top: 0 !important;

@@ -8,6 +8,14 @@ import { useCloseOnOutsideClick } from '../hooks/useCloseOnOutsideClick'
 
 const NEARBY_RADIUS_NM = 50
 
+interface RouteCheckRow {
+  id: string
+  label: string
+  loading: boolean
+  error: string | null
+  result: AirspaceCeilingResult | null
+}
+
 interface Props {
   waypoints: Waypoint[]
   livePosition?: LivePosition | null
@@ -23,6 +31,14 @@ export default function MapInfoDrawer({ waypoints, livePosition, onClose }: Prop
   const [airspaceLoading, setAirspaceLoading] = useState(false)
   const [airspaceError, setAirspaceError] = useState<string | null>(null)
   const [airspaceResult, setAirspaceResult] = useState<AirspaceCeilingResult | null>(null)
+  // Which point the single-point check below runs against — 'auto' keeps
+  // the original zero-friction default (live position while GPS is on,
+  // otherwise the first waypoint), but this is now overridable to any
+  // waypoint along the route rather than being locked to just those two.
+  const [checkTargetId, setCheckTargetId] = useState('auto')
+
+  const [routeCheck, setRouteCheck] = useState<RouteCheckRow[] | null>(null)
+  const [routeChecking, setRouteChecking] = useState(false)
 
   const valid = waypoints.filter(
     (w) => Number.isFinite(w.lat) && Number.isFinite(w.lon) && (w.lat !== 0 || w.lon !== 0)
@@ -35,9 +51,19 @@ export default function MapInfoDrawer({ waypoints, livePosition, onClose }: Prop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [valid, livePosition?.lat, livePosition?.lon])
 
-  // Checks around the live GPS position when tracking, otherwise the first
-  // waypoint (e.g. checking your departure field before takeoff with GPS off).
-  const checkPoint = livePosition ?? valid[0] ?? null
+  // Every point the single-point picker can target: live position first
+  // (when GPS is on), then each route waypoint in order.
+  const checkTargets = [
+    ...(livePosition ? [{ id: 'live', label: 'My position', lat: livePosition.lat, lon: livePosition.lon }] : []),
+    ...valid.map((w, i) => ({ id: `wp-${w.id}`, label: w.name || `WP${i + 1}`, lat: w.lat, lon: w.lon }))
+  ]
+  // 'auto' keeps the original default — live position while tracking,
+  // otherwise the first waypoint (e.g. checking your departure field before
+  // takeoff with GPS off) — without needing the picker touched at all.
+  const checkPoint =
+    checkTargetId === 'auto'
+      ? (checkTargets[0] ?? null)
+      : (checkTargets.find((t) => t.id === checkTargetId) ?? checkTargets[0] ?? null)
 
   async function handleCheckAirspace() {
     if (!checkPoint) {
@@ -58,6 +84,56 @@ export default function MapInfoDrawer({ waypoints, livePosition, onClose }: Prop
     } finally {
       setAirspaceLoading(false)
     }
+  }
+
+  // Checks every waypoint along the route in turn, compiling one ceiling
+  // result per leg instead of just the single point above. Sequential
+  // (not Promise.all) rather than firing every request at once — gentler
+  // on OpenAIP for a long route, and each row updates as its own result
+  // comes in rather than the whole list waiting on the slowest lookup.
+  // One waypoint failing doesn't stop the rest from being checked.
+  async function handleCheckRoute() {
+    if (valid.length === 0) {
+      setAirspaceError('Add at least one waypoint first.')
+      return
+    }
+    const apiKey = import.meta.env.VITE_OPENAIP_API_KEY as string | undefined
+    if (!apiKey) {
+      setAirspaceError('No OpenAIP API key configured.')
+      return
+    }
+    setAirspaceError(null)
+    setRouteChecking(true)
+    const rows: RouteCheckRow[] = valid.map((w, i) => ({
+      id: w.id,
+      label: w.name || `WP${i + 1}`,
+      loading: true,
+      error: null,
+      result: null
+    }))
+    setRouteCheck(rows)
+
+    for (let i = 0; i < valid.length; i++) {
+      const wp = valid[i]
+      try {
+        const result = await fetchAirspaceCeiling(wp.lat, wp.lon, apiKey)
+        setRouteCheck((prev) => prev?.map((r, idx) => (idx === i ? { ...r, loading: false, result } : r)) ?? prev)
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Could not check airspace.'
+        setRouteCheck((prev) => prev?.map((r, idx) => (idx === i ? { ...r, loading: false, error: message } : r)) ?? prev)
+      }
+    }
+    setRouteChecking(false)
+  }
+
+  function summarizeCeiling(result: AirspaceCeilingResult): string {
+    if (!result.limiting) return 'Clear — nothing controlled/restricted overhead'
+    const cls = airspaceClassLabel(result.limiting.icaoClass)
+    if (result.atSurface) return `At surface: ${result.limiting.name} (Class ${cls})`
+    if (result.maxClimbFt !== null) {
+      return `Climb to ~${Math.round(result.maxClimbFt).toLocaleString()} ft before ${result.limiting.name} (Class ${cls})`
+    }
+    return `${result.limiting.name} (Class ${cls}) overhead, floor unknown`
   }
 
   return (
@@ -105,16 +181,43 @@ export default function MapInfoDrawer({ waypoints, livePosition, onClose }: Prop
         </button>
         {airspaceOpen && (
           <div className="map-info-section-body">
+            {checkTargets.length > 1 && (
+              <div className="map-info-target-picker">
+                <label htmlFor="airspace-check-target">Check at</label>
+                <select
+                  id="airspace-check-target"
+                  value={checkTargetId}
+                  onChange={(e) => setCheckTargetId(e.target.value)}
+                >
+                  <option value="auto">
+                    Auto ({livePosition ? 'my position' : 'first waypoint'})
+                  </option>
+                  {checkTargets.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <button
               type="button"
               className="map-info-check-btn"
               onClick={handleCheckAirspace}
               disabled={airspaceLoading || !checkPoint}
             >
-              {airspaceLoading
-                ? 'Checking…'
-                : `Check airspace ${livePosition ? 'at my position' : 'at first waypoint'}`}
+              {airspaceLoading ? 'Checking…' : `Check airspace at ${checkPoint?.label ?? '—'}`}
             </button>
+            {valid.length > 1 && (
+              <button
+                type="button"
+                className="map-info-check-btn"
+                onClick={handleCheckRoute}
+                disabled={routeChecking}
+              >
+                {routeChecking ? 'Checking route…' : 'Check airspace at every waypoint'}
+              </button>
+            )}
             {airspaceError && <p className="auth-error">{airspaceError}</p>}
             {airspaceResult && !airspaceError && (
               <>
@@ -166,6 +269,30 @@ export default function MapInfoDrawer({ waypoints, livePosition, onClose }: Prop
                   From OpenAIP's community-maintained dataset around this single point only &mdash; not
                   exhaustive, and floors given as AGL are approximate without local terrain data. Always
                   cross-check the current AIP before relying on this.
+                </p>
+              </>
+            )}
+            {routeCheck && (
+              <>
+                <div className="map-info-ceiling-list">
+                  {routeCheck.map((row) => (
+                    <div className="map-info-route-check-row" key={row.id}>
+                      <span className="map-info-route-check-label">{row.label}</span>
+                      <span className="map-info-route-check-summary">
+                        {row.loading
+                          ? 'Checking…'
+                          : row.error
+                            ? row.error
+                            : row.result
+                              ? summarizeCeiling(row.result)
+                              : '—'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="footnote">
+                  One lookup per waypoint, around that single point only &mdash; same OpenAIP data and caveats
+                  as the single check above. A busy route means several requests in a row; give it a moment.
                 </p>
               </>
             )}
