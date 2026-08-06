@@ -2740,7 +2740,7 @@ button:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-.synthetic-vision-target-picker {
+.attitude-bearing-target-picker {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2749,12 +2749,12 @@ button:focus-visible {
   font-size: 0.82rem;
 }
 
-.synthetic-vision-target-picker label {
+.attitude-bearing-target-picker label {
   color: var(--text-muted);
   flex-shrink: 0;
 }
 
-.synthetic-vision-target-picker select {
+.attitude-bearing-target-picker select {
   flex: 1;
   min-width: 0;
   background: var(--panel-raised);
@@ -2763,7 +2763,7 @@ button:focus-visible {
   padding: 6px 8px;
 }
 
-.synthetic-vision-target-readout {
+.attitude-bearing-target-readout {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2772,16 +2772,16 @@ button:focus-visible {
   text-align: center;
 }
 
-.synthetic-vision-target-readout strong {
+.attitude-bearing-target-readout strong {
   color: var(--cyan);
 }
 
-.synthetic-vision-target-readout span {
+.attitude-bearing-target-readout span {
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
-.synthetic-vision-gps-btn {
+.attitude-bearing-gps-btn {
   background: var(--panel-raised);
   border: 1px solid var(--cyan);
   border-radius: 8px;
@@ -2792,7 +2792,7 @@ button:focus-visible {
   cursor: pointer;
 }
 
-.synthetic-vision-gps-btn:hover {
+.attitude-bearing-gps-btn:hover {
   background: rgba(79, 209, 197, 0.1);
 }
 

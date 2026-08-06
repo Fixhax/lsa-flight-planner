@@ -70,10 +70,10 @@ const HELP_GROUPS: HelpGroup[] = [
     ]
   },
   {
-    title: 'Synthetic vision',
+    title: 'Attitude & bearing',
     paragraphs: [
       "An attitude horizon (pitch/bank, from this device's motion sensors — iOS will prompt for a one-time \"Motion & Orientation Access\" permission the first time you tap Enable) plus a vertical bearing line for a target airfield: pick one from the dropdown, or leave it on \"Auto\" to follow your engine-out target when that's active, otherwise your route's destination. The line sits left or right of center by how far you'd need to turn — left/right from your device's compass heading vs. the true bearing to the target — and disappears when the target isn't roughly ahead (behind you, or well off to one side), same as it would out a real windscreen. Distance, left/right angle, and altitude difference are shown as numbers below the horizon, not as part of the line itself, so they're still there even when the line has scrolled out of view.",
-      "This is NOT real synthetic vision in the certified-avionics sense — no terrain is rendered, and it can't know about hills, towers, or anything else between you and the target. It's a computed bearing pointer toward known coordinates, nothing more. Needs both motion sensors and GPS (Live tracking panel — a \"Turn on GPS\" button is right in this panel too) to show the line and the distance/bearing readout; without GPS or without a working compass on this device, it falls back to just the plain horizon. \"Level / center\" resets the current orientation as zero, since a kneeboard or mount is rarely perfectly level itself — recalibrate if it drifts or after remounting the device. Invert/swap settings are remembered per device, so you shouldn't need to redo them every time you open this."
+      "This is not a rendered terrain view and can't know about hills, towers, or anything else between you and the target — just a computed bearing pointer toward known coordinates. Needs both motion sensors and GPS (Live tracking panel — a \"Turn on GPS\" button is right in this panel too) to show the line and the distance/bearing readout; without GPS or without a working compass on this device, it falls back to just the plain horizon. \"Level / center\" resets the current orientation as zero, since a kneeboard or mount is rarely perfectly level itself — recalibrate if it drifts or after remounting the device. Invert/swap settings are remembered per device, so you shouldn't need to redo them every time you open this."
     ]
   },
   {

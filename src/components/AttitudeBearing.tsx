@@ -19,9 +19,8 @@ const BANK_TICKS = [-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60]
 const PX_PER_DEG = 2.6
 
 // Wide rectangular frame (rather than a circular attitude-ball bezel) —
-// closer to how a real wide-format PFD/synthetic-vision display looks,
-// and gives more horizontal room before a target marker runs off the
-// visible edge.
+// closer to a real wide-format PFD, and gives more horizontal room
+// before a target's bearing line runs off the visible edge.
 const VIEW_W = 300
 const VIEW_H = 180
 const CENTER_X = 150
@@ -63,7 +62,7 @@ function loadCalibration(): Calibration {
   }
 }
 
-export default function SyntheticVision({
+export default function AttitudeBearing({
   waypoints,
   livePosition,
   engineOutTarget,
@@ -167,7 +166,7 @@ export default function SyntheticVision({
   if (!active) {
     return (
       <button type="button" className="live-tracking-btn" onClick={() => setActive(true)}>
-        Show synthetic vision
+        Show attitude &amp; bearing
       </button>
     )
   }
@@ -175,7 +174,7 @@ export default function SyntheticVision({
   if (permission === 'unsupported') {
     return (
       <p className="empty-hint">
-        This device or browser doesn't expose orientation sensors — synthetic vision isn't
+        This device or browser doesn't expose orientation sensors — attitude &amp; bearing isn't
         available here.
       </p>
     )
@@ -194,9 +193,9 @@ export default function SyntheticVision({
 
   return (
     <div className="attitude-wrap">
-      <div className="synthetic-vision-target-picker">
-        <label htmlFor="sv-target">Target</label>
-        <select id="sv-target" value={manualTargetId} onChange={(e) => setManualTargetId(e.target.value)}>
+      <div className="attitude-bearing-target-picker">
+        <label htmlFor="ab-target">Target</label>
+        <select id="ab-target" value={manualTargetId} onChange={(e) => setManualTargetId(e.target.value)}>
           <option value="auto">
             Auto ({engineOutTarget ? 'engine-out target' : autoTarget ? 'destination' : 'none set'})
           </option>
@@ -223,15 +222,15 @@ export default function SyntheticVision({
         viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
         className="attitude-indicator"
         role="img"
-        aria-label="Synthetic vision horizon"
+        aria-label="Attitude horizon"
       >
         <defs>
-          <clipPath id="sv-bezel-clip">
+          <clipPath id="ab-bezel-clip">
             <rect x="8" y="8" width={VIEW_W - 16} height={VIEW_H - 16} rx="14" />
           </clipPath>
         </defs>
 
-        <g clipPath="url(#sv-bezel-clip)">
+        <g clipPath="url(#ab-bezel-clip)">
           <g transform={`rotate(${-roll} ${CENTER_X} ${CENTER_Y}) translate(0 ${CENTER_Y + translateY})`}>
             <rect x="-300" y="-600" width="900" height="600" fill="#3b82c4" />
             <rect x="-300" y="0" width="900" height="600" fill="#8a5a34" />
@@ -258,7 +257,6 @@ export default function SyntheticVision({
                 )}
               </g>
             ))}
-
           </g>
         </g>
 
@@ -279,10 +277,7 @@ export default function SyntheticVision({
         })}
 
         <g transform={`rotate(${-roll} ${CENTER_X} ${CENTER_Y})`}>
-          <polygon
-            points={`${CENTER_X},12 ${CENTER_X - 6},24 ${CENTER_X + 6},24`}
-            fill="#fff"
-          />
+          <polygon points={`${CENTER_X},12 ${CENTER_X - 6},24 ${CENTER_X + 6},24`} fill="#fff" />
         </g>
 
         {/* Target bearing line — a single indicator, deliberately fixed to
@@ -300,7 +295,7 @@ export default function SyntheticVision({
             when the target isn't roughly ahead — the numeric bearing in
             the readout below still works even then. */}
         {relativeBearingDeg !== null && (
-          <g clipPath="url(#sv-bezel-clip)">
+          <g clipPath="url(#ab-bezel-clip)">
             <line
               x1={CENTER_X + relativeBearingDeg * PX_PER_DEG}
               y1="14"
@@ -348,7 +343,7 @@ export default function SyntheticVision({
       </div>
 
       {target && (
-        <div className="synthetic-vision-target-readout">
+        <div className="attitude-bearing-target-readout">
           <strong>{target.name}</strong>
           {targetInfo ? (
             <span>
@@ -359,7 +354,7 @@ export default function SyntheticVision({
             </span>
           ) : (
             !livePosition && (
-              <button type="button" className="synthetic-vision-gps-btn" onClick={onStartGps}>
+              <button type="button" className="attitude-bearing-gps-btn" onClick={onStartGps}>
                 Turn on GPS for distance/bearing
               </button>
             )
@@ -371,7 +366,7 @@ export default function SyntheticVision({
       )}
 
       {!gpsTracking && !target && (
-        <button type="button" className="synthetic-vision-gps-btn" onClick={onStartGps}>
+        <button type="button" className="attitude-bearing-gps-btn" onClick={onStartGps}>
           Turn on GPS tracking
         </button>
       )}
@@ -409,18 +404,18 @@ export default function SyntheticVision({
       </div>
 
       <button type="button" className="attitude-close-btn" onClick={() => setActive(false)}>
-        Close synthetic vision
+        Close attitude &amp; bearing
       </button>
 
       <p className="footnote">
         Reference only — derived from this device's motion sensors and GPS, not a certified flight
-        instrument or real synthetic vision system (no terrain is rendered — the vertical line is
-        just a bearing pointer toward the selected target's coordinates; distance and altitude
-        difference are numbers in the readout below it, not part of the graphic). Never rely on this
-        instead of proper training, visual reference, or certified panel instruments. "Level / center"
-        sets the device's current orientation as zero. Invert/swap settings are remembered on this
-        device, so you shouldn't need to reset them every session — "Level / center" still resets each
-        time you open this, since re-leveling before flight is good practice regardless of mount.
+        instrument (no terrain is rendered — the vertical line is just a bearing pointer toward the
+        selected target's coordinates; distance and altitude difference are numbers in the readout
+        below it, not part of the graphic). Never rely on this instead of proper training, visual
+        reference, or certified panel instruments. "Level / center" sets the device's current
+        orientation as zero. Invert/swap settings are remembered on this device, so you shouldn't need
+        to reset them every session — "Level / center" still resets each time you open this, since
+        re-leveling before flight is good practice regardless of mount.
       </p>
     </div>
   )
