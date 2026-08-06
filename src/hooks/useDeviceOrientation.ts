@@ -8,6 +8,12 @@ import { useEffect, useRef, useState } from 'react'
 // visibly shaky rather than tracking smooth, real attitude changes.
 const SMOOTHING = 0.15
 
+// Standard gravity, m/s² — the expected accelerationIncludingGravity
+// magnitude when the device is experiencing gravity alone, used as a
+// reference point for how much a given sample is being thrown off by
+// real linear acceleration rather than pure tilt.
+const GRAVITY_MAGNITUDE = 9.80665
+
 export interface Orientation {
   pitchDeg: number
   rollDeg: number
@@ -99,12 +105,34 @@ export function useDeviceOrientation(active = true) {
       const g = e.accelerationIncludingGravity
       if (!g || g.x === null || g.y === null || g.z === null) return
       const { x, y, z } = g
+
+      // accelerationIncludingGravity is gravity PLUS whatever linear
+      // acceleration the device is actually undergoing right now — the
+      // pitch/roll formula below assumes it's reading pure gravity, so any
+      // real acceleration (a bump, a throttle change, uncoordinated yaw,
+      // or just handling the phone) corrupts the tilt it computes. There's
+      // no way to separate the two from this sensor alone (that needs a
+      // gyroscope-fused AHRS, well beyond "just tilt"), but a cheap proxy
+      // works: gravity alone always has a magnitude of ~9.8 m/s², so how
+      // far the *measured* magnitude strays from that is a decent signal
+      // for how much to trust this particular sample. Reacting less to
+      // low-confidence samples (rather than ignoring them outright) means
+      // a genuine sustained change — e.g. a real coordinated turn, whose
+      // resultant vector correctly reflects bank angle even though its
+      // magnitude rises above 1g under load — still gets tracked, just
+      // more gradually, while brief bumps and jitter get damped out
+      // instead of visibly kicking the horizon.
+      const magnitude = Math.sqrt(x * x + y * y + z * z)
+      const deviation = Math.abs(magnitude - GRAVITY_MAGNITUDE) / GRAVITY_MAGNITUDE
+      const confidence = Math.max(0.15, 1 - deviation)
+      const effectiveSmoothing = SMOOTHING * confidence
+
       const rawPitchDeg = (Math.atan2(-x, Math.sqrt(y * y + z * z)) * 180) / Math.PI
       const rawRollDeg = (Math.atan2(y, z) * 180) / Math.PI
 
       const prev = smoothPitchRollRef.current
-      const pitchDeg = prev ? prev.pitch + SMOOTHING * (rawPitchDeg - prev.pitch) : rawPitchDeg
-      const rollDeg = prev ? prev.roll + SMOOTHING * (rawRollDeg - prev.roll) : rawRollDeg
+      const pitchDeg = prev ? prev.pitch + effectiveSmoothing * (rawPitchDeg - prev.pitch) : rawPitchDeg
+      const rollDeg = prev ? prev.roll + effectiveSmoothing * (rawRollDeg - prev.roll) : rawRollDeg
       smoothPitchRollRef.current = { pitch: pitchDeg, roll: rollDeg }
 
       setOrientation({ pitchDeg, rollDeg, rawX: x, rawY: y, rawZ: z })
