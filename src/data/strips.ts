@@ -204,7 +204,11 @@ export const airstrips: AirstripEntry[] = [
     region: 'Agder',
     surface: 'grass',
     lat: 58.6054,
-    lon: 7.8079
+    lon: 7.8079,
+    lengthM: 485,
+    elevationFt: 600,
+    runway: '11/29',
+    note: 'Grass surface confirmed — Evje flyplass on Evjeneset in the Otra river, Evje og Hornnes'
   },
   {
     id: 'no-ripel-omvikdal',
@@ -247,11 +251,16 @@ export const airstrips: AirstripEntry[] = [
   {
     id: 'no-meraker-oian',
     name: 'Mer\u00e5ker, \u00d8ian',
+    icao: 'ENMO',
     country: 'NO',
     region: 'Tr\u00f8ndelag',
     surface: 'grass',
     lat: 63.3723,
-    lon: 11.8117
+    lon: 11.8117,
+    lengthM: 590,
+    elevationFt: 980,
+    runway: '16/34',
+    note: 'Grass surface confirmed (somewhat uneven terrain noted, crushed gabbro fill) \u2014 length/elevation corrected to 590m/980ft per Wikipedia (Mer\u00e5ker flyplass, \u00d8ian), which differs from the 592m/1010ft previously cited to a "Praktisk Flyging" mikrofly guide; landing fee NOK 50, MoGas available'
   },
   {
     id: 'no-atna',
@@ -299,31 +308,14 @@ export const airstrips: AirstripEntry[] = [
     lon: 9.7269
   },
   {
-    id: 'no-sandane',
-    name: 'Sandane',
-    country: 'NO',
-    region: 'Vestland',
-    surface: 'grass',
-    lat: 61.8301,
-    lon: 6.1081
-  },
-  {
-    id: 'no-floro',
-    name: 'Flor\u00f8',
-    country: 'NO',
-    region: 'Vestland',
-    surface: 'grass',
-    lat: 61.5814,
-    lon: 5.0153
-  },
-  {
     id: 'no-gossen',
     name: 'Gossen',
     country: 'NO',
     region: 'M\u00f8re og Romsdal',
     surface: 'grass',
     lat: 62.8346,
-    lon: 6.8315
+    lon: 6.8315,
+    note: 'Former WWII Luftwaffe airfield (Aukra flyplass, Gossen) \u2014 per Wikipedia the original 1650m runway has shrunk to roughly 550m and is now described as used largely for model aircraft flying; current usability for full-scale GA aircraft is unclear, so no length/runway data added'
   },
   {
     id: 'no-gauldal-ler',
@@ -355,11 +347,15 @@ export const airstrips: AirstripEntry[] = [
   {
     id: 'no-bjorli',
     name: 'Bjorli',
+    icao: 'ENLB',
     country: 'NO',
     region: 'Innlandet',
     surface: 'grass',
     lat: 62.2357,
-    lon: 8.2468
+    lon: 8.2468,
+    lengthM: 800,
+    runway: '12/30',
+    note: 'Surface is actually paved (asphalt), not grass — Bjorli flyplass (Lesja flyplass, Bjorli) per Wikipedia; used for skydiving operations'
   },
   {
     id: 'no-wadahl',
@@ -373,20 +369,16 @@ export const airstrips: AirstripEntry[] = [
   {
     id: 'no-frya',
     name: 'Frya',
+    icao: 'ENRI',
     country: 'NO',
     region: 'Innlandet',
     surface: 'grass',
     lat: 61.5449,
-    lon: 10.0633
-  },
-  {
-    id: 'no-fagernes-leirin',
-    name: 'Fagernes, Leirin',
-    country: 'NO',
-    region: 'Innlandet',
-    surface: 'grass',
-    lat: 61.0142,
-    lon: 9.2883
+    lon: 10.0633,
+    lengthM: 800,
+    elevationFt: 570,
+    runway: '10/28',
+    note: 'Surface is actually paved (asphalt), not grass — Ringebu flyplass, Frya per Wikipedia; skydiving conducted by Lesja and Hamar parachute clubs, home of Gudbrandsdal Flyklubb'
   },
   {
     id: 'no-dokka-thomlevold',
@@ -395,7 +387,9 @@ export const airstrips: AirstripEntry[] = [
     region: 'Innlandet',
     surface: 'grass',
     lat: 60.8335,
-    lon: 9.9101
+    lon: 9.9101,
+    lengthM: 740,
+    note: 'Grass surface confirmed — per Store norske leksikon; private strip belonging to Land Flyklubb, year-round operation'
   },
   {
     id: 'no-reinsvoll',
@@ -428,29 +422,29 @@ export const airstrips: AirstripEntry[] = [
   {
     id: 'no-folldal-grimsmoen',
     name: 'Folldal, Grimsmoen',
+    icao: 'ENGN',
     country: 'NO',
     region: 'Innlandet',
-    surface: 'grass',
+    surface: 'gravel',
     lat: 62.1169,
-    lon: 10.1103
+    lon: 10.1103,
+    lengthM: 1000,
+    elevationFt: 2263,
+    note: 'Surface corrected to gravel (with concrete pads at both ends for engine run-ups) — per Wikipedia; popular gliding site near Rondane/Dovrefjell for mountain-wave conditions'
   },
   {
     id: 'no-tynset',
     name: 'Tynset',
+    icao: 'ENTY',
     country: 'NO',
     region: 'Innlandet',
     surface: 'grass',
     lat: 62.2566,
-    lon: 10.6693
-  },
-  {
-    id: 'no-roros',
-    name: 'R\u00f8ros',
-    country: 'NO',
-    region: 'Tr\u00f8ndelag',
-    surface: 'grass',
-    lat: 62.5797,
-    lon: 11.3426
+    lon: 10.6693,
+    lengthM: 940,
+    elevationFt: 1580,
+    runway: '05/23',
+    note: 'Grass surface confirmed (regarded as one of the country\u2019s best grass runways) \u2014 per Wikipedia/tynsetflyklubb.no; home of Tynset Flyklubb'
   },
   {
     id: 'no-solenstua',
@@ -468,34 +462,49 @@ export const airstrips: AirstripEntry[] = [
     region: 'Innlandet',
     surface: 'grass',
     lat: 61.2583,
-    lon: 11.669
+    lon: 11.669,
+    lengthM: 600,
+    elevationFt: 1621,
+    runway: '01/19',
+    note: 'Surface is actually paved (asphalt), not grass \u2014 \u00d8stre \u00c6ra Airport per Wikidata; operated by Norges Luftsportforbund'
   },
   {
     id: 'no-trysil-saeteraasen',
     name: 'Trysil, S\u00e6ter\u00e5sen',
+    icao: 'ENTS',
     country: 'NO',
     region: 'Innlandet',
     surface: 'grass',
     lat: 61.2296,
-    lon: 12.2659
+    lon: 12.2659,
+    lengthM: 800,
+    runway: '15/33',
+    note: 'Runway is ~30m wide with only the center 8.6m paved (asphalt) \u2014 per metar-taf.com; skydiving, gliding and advanced VFR flying conducted here, operated by Trysil flying club'
   },
   {
     id: 'no-trysil-ljordalen',
     name: 'Trysil, Lj\u00f8rdalen',
     country: 'NO',
     region: 'Innlandet',
-    surface: 'grass',
+    surface: 'gravel',
     lat: 61.3547,
-    lon: 12.7562
+    lon: 12.7562,
+    lengthM: 800,
+    note: 'Surface corrected to gravel (morenegrus/moraine gravel), not grass, per search results citing the field\u2019s own data'
   },
   {
     id: 'no-hamar-stafsberg',
     name: 'Hamar, Stafsberg',
+    icao: 'ENHA',
     country: 'NO',
     region: 'Innlandet',
-    surface: 'grass',
+    surface: 'gravel',
     lat: 60.8196,
-    lon: 11.0657
+    lon: 11.0657,
+    lengthM: 800,
+    elevationFt: 729,
+    runway: '15/33',
+    note: 'Surface corrected to gravel with a paved (asphalt) center strip ~10m wide, per a 2022 NSIA (Statens havarikommisjon) accident report; some other sources list it simply as asphalt. Runway length figures vary slightly between sources (800m per NSIA/TODA vs up to ~944m physical length cited elsewhere). Operated by Innlandet Luftsportsenter.'
   },
   {
     id: 'no-mesnali',
@@ -513,7 +522,11 @@ export const airstrips: AirstripEntry[] = [
     region: 'Innlandet',
     surface: 'grass',
     lat: 60.2673,
-    lon: 12.0226
+    lon: 12.0226,
+    lengthM: 770,
+    elevationFt: 495,
+    runway: '16/34',
+    note: 'Grass surface confirmed; home of Phoenix Mikroflyklubb'
   },
   {
     id: 'no-maarud',
@@ -536,12 +549,16 @@ export const airstrips: AirstripEntry[] = [
   {
     id: 'no-kjeller',
     name: 'Kjeller',
+    icao: 'ENKJ',
     country: 'NO',
     region: 'Akershus',
     surface: 'grass',
     lat: 59.9699,
     lon: 11.0406,
-    note: 'Historic airfield adjoining the built-up Kjeller area \u2014 confirm current civil-use status locally'
+    lengthM: 1735,
+    elevationFt: 354,
+    runway: '12/30',
+    note: 'Surface is actually paved (asphalt), not grass \u2014 per Wikipedia (Kjeller Airfield); historic airfield adjoining the built-up Kjeller area \u2014 confirm current civil-use status locally'
   },
   {
     id: 'no-ski',
@@ -550,7 +567,11 @@ export const airstrips: AirstripEntry[] = [
     region: 'Akershus',
     surface: 'grass',
     lat: 59.7084,
-    lon: 10.8822
+    lon: 10.8822,
+    lengthM: 525,
+    elevationFt: 350,
+    runway: '01/19',
+    note: 'Grass surface confirmed — Ski flyplass, Søndre Ski Gård per Wikipedia; home of Follo Flyklubb, established 1963'
   },
   {
     id: 'no-torsnes',
@@ -559,61 +580,89 @@ export const airstrips: AirstripEntry[] = [
     region: '\u00d8stfold',
     surface: 'grass',
     lat: 59.1953,
-    lon: 11.0633
+    lon: 11.0633,
+    note: 'Grass surface confirmed, summer-season operation only \u2014 per Wikipedia; an outbase of Flyklubben \u00d8st; length/runway not confirmed'
   },
   {
     id: 'no-rakkestad',
     name: 'Rakkestad',
+    icao: 'ENRK',
     country: 'NO',
     region: '\u00d8stfold',
     surface: 'grass',
     lat: 59.3973,
-    lon: 11.3465
+    lon: 11.3465,
+    lengthM: 1080,
+    elevationFt: 380,
+    runway: '15/33',
+    note: 'Surface is actually paved (asphalt), not grass \u2014 Rakkestad flyplass, \u00c5storp per Wikipedia; originally a 600m grass strip (1970), paved in 1998 and extended to 1080m in 2009. Private field, home of Norr\u00f8nafly, Rakkestad Flyklubb and Nimbus Fallskjermklubb'
   },
   {
     id: 'se-arvika',
     name: 'Arvika',
+    icao: 'ESKV',
     country: 'SE',
     region: 'V\u00e4rmland',
     surface: 'grass',
     lat: 59.6752,
-    lon: 12.6394
+    lon: 12.6394,
+    lengthM: 1150,
+    elevationFt: 237,
+    runway: '01/19',
+    note: 'Surface is actually paved (asphalt), not grass \u2014 Arvika flygplats, Westlanda per Wikipedia; private field serving Arvika Flygklubb'
   },
   {
     id: 'no-jarlsberg',
     name: 'Jarlsberg',
+    icao: 'ENJB',
     country: 'NO',
     region: 'Vestfold',
     surface: 'grass',
     lat: 59.2985,
-    lon: 10.3699
+    lon: 10.3699,
+    lengthM: 800,
+    elevationFt: 90,
+    runway: '18/36',
+    note: 'Surface is actually paved (asphalt), not grass — Tønsberg flyplass, Jarlsberg per Wikipedia; operated by Jarlsberg Luftsportssenter AS, home to Tønsberg Flyveklubb and other clubs (motor, sport, model, glider, parachuting)'
   },
   {
     id: 'no-hokksund',
     name: 'Hokksund',
+    icao: 'ENHS',
     country: 'NO',
     region: 'Buskerud',
     surface: 'grass',
     lat: 59.7598,
-    lon: 9.9175
+    lon: 9.9175,
+    lengthM: 630,
+    elevationFt: 30,
+    runway: '10/28',
+    note: 'Grass surface confirmed; important gliding site with significant motor/microfly activity too'
   },
   {
     id: 'no-geilo-dagali',
     name: 'Geilo, Dagali',
+    icao: 'ENDI',
     country: 'NO',
     region: 'Buskerud',
     surface: 'grass',
     lat: 60.4165,
-    lon: 8.5128
+    lon: 8.5128,
+    note: 'Surface is actually paved, not grass — Geilo Airport, Dagali per Wikipedia; private field, usable runway length varies by source/season (up to ~1000m summer, ~850m winter when plowed; historically paved to 1800m) so no single length figure is recorded here'
   },
   {
     id: 'no-eggemoen',
     name: 'Eggemoen',
+    icao: 'ENEG',
     country: 'NO',
     region: 'Buskerud',
     surface: 'grass',
     lat: 60.21,
-    lon: 10.3116
+    lon: 10.3116,
+    lengthM: 2100,
+    elevationFt: 660,
+    runway: '04/22',
+    note: 'Surface is actually paved (asphalt), not grass — Hønefoss Airport, Eggemoen per Wikipedia/eggemoen.no; part of the Eggemoen Aviation & Technology Park, not part of the Avinor network'
   },
   {
     id: 'no-stryn',
@@ -623,7 +672,10 @@ export const airstrips: AirstripEntry[] = [
     surface: 'grass',
     lat: 61.9104,
     lon: 6.7555,
-    note: 'PPR'
+    lengthM: 260,
+    elevationFt: 12,
+    runway: '09/27',
+    note: 'Grass surface confirmed — per Stryn Luftsportsklubb (strynluftsport.no); PPR required, two hangars and a clubhouse on site'
   },
   {
     id: 'no-orsta-hovden',
@@ -635,31 +687,18 @@ export const airstrips: AirstripEntry[] = [
     lon: 6.0714
   },
   {
-    id: 'no-sogndal-haukaasen',
-    name: 'Sogndal, Hauk\u00e5sen',
-    country: 'NO',
-    region: 'Vestland',
-    surface: 'grass',
-    lat: 61.1553,
-    lon: 7.1352
-  },
-  {
-    id: 'no-forde-bringeland',
-    name: 'F\u00f8rde, Bringeland',
-    country: 'NO',
-    region: 'Vestland',
-    surface: 'grass',
-    lat: 61.3923,
-    lon: 5.7606
-  },
-  {
     id: 'no-voss-bomoen',
     name: 'Voss, B\u00f8moen',
+    icao: 'ENBM',
     country: 'NO',
     region: 'Vestland',
     surface: 'grass',
     lat: 60.6379,
-    lon: 6.4987
+    lon: 6.4987,
+    lengthM: 1000,
+    elevationFt: 331,
+    runway: '09/27',
+    note: 'Surface is actually paved (asphalt), not grass \u2014 Voss Airport, B\u00f8moen per Wikipedia; former military field, not part of the Avinor network'
   },
   {
     id: 'no-os-vaksinen',
@@ -674,93 +713,110 @@ export const airstrips: AirstripEntry[] = [
   {
     id: 'no-stord-sorstokken',
     name: 'Stord, S\u00f8rstokken',
+    icao: 'ENSO',
     country: 'NO',
     region: 'Vestland',
     surface: 'grass',
     lat: 59.7931,
-    lon: 5.339
-  },
-  {
-    id: 'no-haugesund-karmoy',
-    name: 'Haugesund, Karm\u00f8y area strip',
-    country: 'NO',
-    region: 'Rogaland',
-    surface: 'grass',
-    lat: 59.3432,
-    lon: 5.2113
-  },
-  {
-    id: 'no-lista-farsund',
-    name: 'Lista, Farsund',
-    country: 'NO',
-    region: 'Agder',
-    surface: 'grass',
-    lat: 58.1003,
-    lon: 6.6244
+    lon: 5.339,
+    lengthM: 1460,
+    elevationFt: 153,
+    runway: '14/32',
+    note: 'Surface is actually paved (asphalt), not grass \u2014 Stord Airport, S\u00f8rstokken per Wikipedia; municipally owned (not part of the Avinor network), used for offshore-helicopter and GA traffic'
   },
   {
     id: 'no-sylvknapp-valle',
     name: 'Sylvknapp, Valle',
+    icao: 'ENVE',
     country: 'NO',
     region: 'Agder',
     surface: 'grass',
     lat: 59.0311,
-    lon: 7.5549
+    lon: 7.5549,
+    lengthM: 800,
+    elevationFt: 770,
+    runway: '01/19',
+    note: 'Surface is actually paved (asphalt), not grass — Valle flyplass, Åraksøyne per Wikipedia'
   },
   {
     id: 'no-arendal-gullknapp',
     name: 'Arendal, Gullknapp',
+    icao: 'ENGK',
     country: 'NO',
     region: 'Agder',
     surface: 'grass',
     lat: 58.5169,
     lon: 8.7046,
-    note: 'Source flags this field as closed (\u201cStengt\u201d) as of its last update \u2014 confirm current status before planning to use it'
+    lengthM: 1199,
+    elevationFt: 390,
+    runway: '05/23',
+    note: 'Surface is actually paved (asphalt), not grass \u2014 Arendal Airport, Gullknapp per Wikipedia. Source flags this field as closed (\u201cStengt\u201d) as of its last update \u2014 confirm current status before planning to use it'
   },
   {
     id: 'no-lunde-nome',
     name: 'Lunde, Nome',
+    icao: 'ENLU',
     country: 'NO',
     region: 'Telemark',
     surface: 'grass',
     lat: 59.2981,
-    lon: 9.1317
+    lon: 9.1317,
+    lengthM: 700,
+    note: 'Grass surface confirmed — 700m strip (usable landing/takeoff distance ~950m including safety areas) per Nome Flyklubb (nomeflyklubb.no), home base of that club'
   },
   {
     id: 'no-skien-geitryggen',
     name: 'Skien, Geitryggen',
+    icao: 'ENSN',
     country: 'NO',
     region: 'Telemark',
     surface: 'grass',
     lat: 59.1836,
-    lon: 9.5667
+    lon: 9.5667,
+    lengthM: 1416,
+    elevationFt: 463,
+    runway: '01/19',
+    note: 'Surface is actually paved (asphalt), not grass — Skien Airport, Geiteryggen per Wikipedia; a private field operated by Grenland Luftsportssenter, not part of the Avinor network'
   },
   {
     id: 'no-notodden-tuven',
     name: 'Notodden, Tuven',
+    icao: 'ENNO',
     country: 'NO',
     region: 'Telemark',
     surface: 'grass',
     lat: 59.5666,
-    lon: 9.2092
+    lon: 9.2092,
+    lengthM: 1393,
+    elevationFt: 62,
+    runway: '12/30',
+    note: 'Surface is actually paved (asphalt), not grass — Notodden Airport, Tuven per Wikipedia; owned by Notodden municipality, operated by Notodden Lufthavn AS, not part of the Avinor network'
   },
   {
     id: 'no-oppdal-fagerhaug',
     name: 'Oppdal, Fagerhaug',
+    icao: 'ENOP',
     country: 'NO',
     region: 'Tr\u00f8ndelag',
     surface: 'grass',
     lat: 62.6513,
-    lon: 9.8516
+    lon: 9.8516,
+    lengthM: 936,
+    note: 'Surface is actually paved (asphalt), not grass \u2014 Oppdal Airport, Fagerhaug per Wikipedia; length corrected to 936m (was 1000m) per the article\u2019s infobox/facilities section'
   },
   {
     id: 'se-torsby',
     name: 'Torsby',
+    icao: 'ESST',
     country: 'SE',
     region: 'V\u00e4rmland',
     surface: 'grass',
     lat: 60.1591,
-    lon: 12.9895
+    lon: 12.9895,
+    lengthM: 1591,
+    elevationFt: 394,
+    runway: '16/34',
+    note: 'Surface is actually paved (asphalt), not grass \u2014 Torsby flygplats per Wikipedia; a substantial regional airport, not a small strip \u2014 runway rebuilt 2004-2005'
   },
   {
     id: 'no-fyresdal',
@@ -777,18 +833,23 @@ export const airstrips: AirstripEntry[] = [
     name: 'Gaundalen',
     country: 'NO',
     region: 'Tr\u00f8ndelag',
-    surface: 'grass',
+    surface: 'gravel',
     lat: 64.0123,
-    lon: 12.6807
+    lon: 12.6807,
+    lengthM: 600,
+    note: 'Surface corrected to gravel, not grass \u2014 built and operated privately at Gaundalen mountain farm in Sn\u00e5sa municipality'
   },
   {
     id: 'no-grong-bjorgan',
     name: 'Grong, Bj\u00f8rgan',
     country: 'NO',
     region: 'Tr\u00f8ndelag',
-    surface: 'grass',
+    surface: 'gravel',
     lat: 64.3956,
-    lon: 12.3402
+    lon: 12.3402,
+    lengthM: 550,
+    runway: '16/34',
+    note: 'Surface corrected to gravel, not grass \u2014 per Wikipedia/Wikidata (Bj\u00f8rgan flyplass, near Formofoss); length corrected to 550m (was 680m) per Wikidata Q11961287'
   },
   {
     id: 'no-stor-amdal-overhalla',
@@ -820,29 +881,44 @@ export const airstrips: AirstripEntry[] = [
   {
     id: 'se-hagfors',
     name: 'Hagfors',
+    icao: 'ESOH',
     country: 'SE',
     region: 'V\u00e4rmland',
     surface: 'grass',
     lat: 60.0199,
-    lon: 13.5789
+    lon: 13.5789,
+    lengthM: 1510,
+    elevationFt: 474,
+    runway: '18/36',
+    note: 'Surface is actually paved (asphalt), not grass \u2014 Hagfors flygplats per Wikipedia; a regional airport, not a small strip'
   },
   {
     id: 'se-sveg',
     name: 'Sveg',
+    icao: 'ESND',
     country: 'SE',
     region: 'J\u00e4mtland',
     surface: 'grass',
     lat: 62.0478,
-    lon: 14.4186
+    lon: 14.4186,
+    lengthM: 1700,
+    elevationFt: 1178,
+    runway: '09/27',
+    note: 'Surface is actually paved (asphalt), not grass \u2014 H\u00e4rjedalen Sveg Airport per Wikipedia; a regional airport, not a small strip'
   },
   {
     id: 'se-mora',
     name: 'Mora',
+    icao: 'ESKM',
     country: 'SE',
     region: 'Dalarna',
     surface: 'grass',
     lat: 60.9583,
-    lon: 14.5106
+    lon: 14.5106,
+    lengthM: 1810,
+    elevationFt: 634,
+    runway: '16/34',
+    note: 'Surface is actually paved (asphalt), not grass \u2014 Mora-Siljan flygplats per Wikipedia; a substantial category-4C regional airport, not a small strip; length/elevation corrected to 1810m/634ft (was 1814m/635ft) to match the infobox exactly'
   },
   {
     id: 'se-orsa',
@@ -865,11 +941,16 @@ export const airstrips: AirstripEntry[] = [
   {
     id: 'se-hemavan',
     name: 'Hemavan',
+    icao: 'ESUT',
     country: 'SE',
     region: 'V\u00e4sterbotten',
     surface: 'grass',
     lat: 65.8075,
-    lon: 15.0811
+    lon: 15.0811,
+    lengthM: 1444,
+    elevationFt: 1509,
+    runway: '15/33',
+    note: 'Surface is actually paved (asphalt), not grass \u2014 Hemavan T\u00e4rnaby flygplats per Wikipedia; a regional airport with scheduled service, not a small strip'
   },
   {
     id: 'se-hallviken',
@@ -892,11 +973,16 @@ export const airstrips: AirstripEntry[] = [
   {
     id: 'se-stromstad-nasinge',
     name: 'Str\u00f6mstad, N\u00e4singe',
+    icao: 'ESGS',
     country: 'SE',
     region: 'V\u00e4stra G\u00f6taland',
     surface: 'grass',
     lat: 59.0168,
-    lon: 11.34
+    lon: 11.34,
+    lengthM: 900,
+    elevationFt: 115,
+    runway: '03/21',
+    note: 'Grass surface confirmed (soft but usable) \u2014 per metar-taf.com/airfield sources; PPR required, obtainable by phone'
   },
   {
     id: 'se-fjallbacka-anras',
@@ -1062,15 +1148,6 @@ export const airstrips: AirstripEntry[] = [
     lon: 14.6308
   },
   {
-    id: 'se-are-ostersund-froson',
-    name: '\u00d6stersund, Fr\u00f6s\u00f6n',
-    country: 'SE',
-    region: 'J\u00e4mtland',
-    surface: 'grass',
-    lat: 63.1949,
-    lon: 14.4951
-  },
-  {
     id: 'se-alaasen',
     name: '\u00c5l\u00e5sen flygplats',
     country: 'SE',
@@ -1103,18 +1180,23 @@ export const airstrips: AirstripEntry[] = [
     name: 'Kautokeino',
     country: 'NO',
     region: 'Finnmark',
-    surface: 'grass',
+    surface: 'gravel',
     lat: 69.0404,
-    lon: 23.0345
+    lon: 23.0345,
+    lengthM: 1200,
+    runway: '01/19',
+    note: 'Surface corrected to gravel, not grass — per Wikipedia'
   },
   {
     id: 'no-kjollefjord',
     name: 'Kj\u00f8llefjord flystripe',
     country: 'NO',
     region: 'Finnmark',
-    surface: 'grass',
+    surface: 'gravel',
     lat: 70.9403,
-    lon: 27.3474
+    lon: 27.3474,
+    lengthM: 630,
+    note: 'Surface corrected to gravel (630x40m per Wikipedia). Wikipedia describes this as a disused general-aviation airfield abandoned in the 1980s \u2014 confirm current status/usability before planning to use it'
   },
   {
     id: 'no-eidsberg',
