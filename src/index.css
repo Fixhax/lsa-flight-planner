@@ -2757,6 +2757,16 @@ button:focus-visible {
   aspect-ratio: 200 / 130;
 }
 
+/* Interpolates smoothly between the discrete state updates coming out of
+   useDeviceOrientation's own EMA smoothing, rather than snapping straight
+   to each new value — the underlying signal is already damped, but a plain
+   attribute change still visually "jumps" every render, which reads as
+   jitter even once the numbers themselves are fairly steady. */
+.tc-needle,
+.tc-ball {
+  transition: transform 200ms linear;
+}
+
 .attitude-readout {
   display: flex;
   gap: 20px;

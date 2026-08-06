@@ -441,7 +441,7 @@ export default function AttitudeBearing({
         <circle cx={stdRateDotLeft.x} cy={stdRateDotLeft.y} r="3" fill="#ffb703" />
         <circle cx={stdRateDotRight.x} cy={stdRateDotRight.y} r="3" fill="#ffb703" />
 
-        <g transform={`rotate(${turnRateVisualDeg} ${TC_CX} ${TC_CY})`}>
+        <g className="tc-needle" transform={`rotate(${turnRateVisualDeg} ${TC_CX} ${TC_CY})`}>
           <rect
             x={TC_CX - TC_WING_HALF_LEN}
             y={TC_CY - 3}
@@ -461,14 +461,16 @@ export default function AttitudeBearing({
         <rect x="60" y="94" width="80" height="20" rx="10" fill="#0d1117" stroke="#444" strokeWidth="1.5" />
         <line x1="88" y1="94" x2="88" y2="114" stroke="#444" strokeWidth="1.5" />
         <line x1="112" y1="94" x2="112" y2="114" stroke="#444" strokeWidth="1.5" />
-        <circle
-          cx={100 + ballOffsetPx}
-          cy="104"
-          r="7"
-          fill={slipSkidDeg !== null ? '#fff' : '#555'}
-          stroke="#0d1117"
-          strokeWidth="1.5"
-        />
+        <g className="tc-ball" transform={`translate(${ballOffsetPx} 0)`}>
+          <circle
+            cx="100"
+            cy="104"
+            r="7"
+            fill={slipSkidDeg !== null ? '#fff' : '#555'}
+            stroke="#0d1117"
+            strokeWidth="1.5"
+          />
+        </g>
       </svg>
 
       <div className="attitude-readout">

@@ -12,7 +12,7 @@ const SMOOTHING = 0.15
 // (heading, to get turn rate) still amplifies its remaining noise a lot,
 // so the rate itself needs heavier damping on top to be readable rather
 // than jumping around every sample.
-const TURN_RATE_SMOOTHING = 0.08
+const TURN_RATE_SMOOTHING = 0.05
 
 // Standard gravity, m/s² — the expected accelerationIncludingGravity
 // magnitude when the device is experiencing gravity alone, used as a
@@ -198,12 +198,16 @@ export function useDeviceOrientation(active = true) {
       // (back-to-back events) — dividing by a tiny dt amplifies whatever
       // noise is left after the heading's own smoothing into huge,
       // meaningless rate spikes, so this only updates at a sane minimum
-      // interval and just holds the last rate in between.
+      // interval and just holds the last rate in between. 0.15s (rather
+      // than a tighter interval) specifically because even a fraction of a
+      // degree of residual compass noise, divided by a very small dt,
+      // dominates the resulting rate — widening the interval shrinks that
+      // amplification a lot, on top of the EMA pass below.
       const now = performance.now()
       const prevSample = lastHeadingSampleRef.current
       if (prevSample) {
         const dtSec = (now - prevSample.time) / 1000
-        if (dtSec > 0.05) {
+        if (dtSec > 0.15) {
           const delta = ((smoothedHeading - prevSample.heading + 540) % 360) - 180
           const instantRateDegPerSec = delta / dtSec
           const prevRate = smoothTurnRateRef.current ?? instantRateDegPerSec
