@@ -70,9 +70,10 @@ const HELP_GROUPS: HelpGroup[] = [
     ]
   },
   {
-    title: 'Attitude indicator',
+    title: 'Synthetic vision',
     paragraphs: [
-      "Uses this device's motion sensors — iOS will prompt for a one-time \"Motion & Orientation Access\" permission the first time you tap Enable. Reference only, not a certified flight instrument. \"Level / center\" resets the current orientation as zero, since a kneeboard or mount is rarely perfectly level itself — recalibrate if it drifts or after remounting the device."
+      "An attitude horizon (pitch/bank, from this device's motion sensors — iOS will prompt for a one-time \"Motion & Orientation Access\" permission the first time you tap Enable) plus a bearing marker for a target airfield: pick one from the dropdown, or leave it on \"Auto\" to follow your engine-out target when that's active, otherwise your route's destination. The marker sits on the horizon at roughly the direction and height you'd actually need to look — left/right from your device's compass heading vs. the true bearing to the target, up/down from the target's published elevation vs. your GPS altitude. A small triangle on the rim always points toward the target too, even when its marker isn't in view (behind you, or off to the side).",
+      "This is NOT real synthetic vision in the certified-avionics sense — no terrain is rendered, and it can't know about hills, towers, or anything else between you and the target. It's a computed pointer toward known coordinates, nothing more. Needs both motion sensors and GPS (Live tracking panel) to show the full bearing/distance readout; without GPS or without a working compass on this device, it falls back to just the plain horizon. \"Level / center\" resets the current orientation as zero, since a kneeboard or mount is rarely perfectly level itself — recalibrate if it drifts or after remounting the device."
     ]
   },
   {

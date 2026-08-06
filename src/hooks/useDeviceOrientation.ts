@@ -23,6 +23,18 @@ function needsExplicitPermission(): boolean {
 export function useDeviceOrientation(active = true) {
   const [permission, setPermission] = useState<PermissionState>('idle')
   const [orientation, setOrientation] = useState<Orientation | null>(null)
+  // Compass heading — degrees, 0 = north. Comes from a separate event
+  // (deviceorientation) than pitch/roll (devicemotion) above, and stays
+  // null whenever this device/browser doesn't expose a usable one, rather
+  // than guessing: Safari's non-standard webkitCompassHeading is already
+  // magnetic-north-referenced and used directly when present (the common
+  // case on iOS, the platform the rest of this hook's permission flow is
+  // built around); the standards-track alpha field is only trustworthy
+  // once the browser reports absolute:true (typically Android Chrome with
+  // a working magnetometer) — plain relative alpha (arbitrary zero point)
+  // is deliberately not used as a substitute, since a heading that's
+  // silently wrong by an unknown offset is worse than no heading at all.
+  const [heading, setHeading] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -85,5 +97,22 @@ export function useDeviceOrientation(active = true) {
     return () => window.removeEventListener('devicemotion', handleMotion)
   }, [permission, active])
 
-  return { permission, orientation, error, requestPermission }
+  useEffect(() => {
+    if (permission !== 'granted' || !active) return
+
+    function handleOrientation(e: DeviceOrientationEvent) {
+      const webkitHeading = (e as DeviceOrientationEvent & { webkitCompassHeading?: number })
+        .webkitCompassHeading
+      if (webkitHeading !== undefined) {
+        setHeading(webkitHeading)
+      } else if (e.absolute && e.alpha !== null) {
+        setHeading((360 - e.alpha) % 360)
+      }
+    }
+
+    window.addEventListener('deviceorientation', handleOrientation)
+    return () => window.removeEventListener('deviceorientation', handleOrientation)
+  }, [permission, active])
+
+  return { permission, orientation, heading, error, requestPermission }
 }

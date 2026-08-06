@@ -45,7 +45,7 @@ import { distanceNm } from './lib/geo'
 import FlightHistory from './components/FlightHistory'
 import SavedPlans from './components/SavedPlans'
 import Help from './components/Help'
-import AttitudeIndicator from './components/AttitudeIndicator'
+import SyntheticVision from './components/SyntheticVision'
 import Checklist from './components/Checklist'
 import MetarTaf from './components/MetarTaf'
 import { applyTheme, getInitialTheme, type Theme } from './lib/theme'
@@ -112,7 +112,7 @@ const SECTION_GROUPS: { label: string; sections: { id: string; label: string }[]
       { id: 'route', label: 'Route & map' },
       { id: 'live', label: 'Live tracking' },
       { id: 'timer', label: 'Flight timer (logbook)' },
-      { id: 'attitude', label: 'Attitude indicator' },
+      { id: 'attitude', label: 'Synthetic vision' },
       { id: 'navlog', label: 'Nav log' },
       { id: 'totals', label: 'Totals' }
     ]
@@ -1139,8 +1139,8 @@ export default function App() {
       </section>
 
       <section className="panel" style={{ display: openSections.has('attitude') ? undefined : 'none' }}>
-        <p className="panel-label">Attitude indicator</p>
-        <AttitudeIndicator />
+        <p className="panel-label">Synthetic vision</p>
+        <SyntheticVision waypoints={waypoints} livePosition={livePosition} engineOutTarget={engineOutTarget} />
       </section>
 
       <section className="panel" style={{ display: openSections.has('history') ? undefined : 'none' }}>
