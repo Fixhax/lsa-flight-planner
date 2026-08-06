@@ -1140,7 +1140,13 @@ export default function App() {
 
       <section className="panel" style={{ display: openSections.has('attitude') ? undefined : 'none' }}>
         <p className="panel-label">Synthetic vision</p>
-        <SyntheticVision waypoints={waypoints} livePosition={livePosition} engineOutTarget={engineOutTarget} />
+        <SyntheticVision
+          waypoints={waypoints}
+          livePosition={livePosition}
+          engineOutTarget={engineOutTarget}
+          gpsTracking={gps.tracking}
+          onStartGps={gps.start}
+        />
       </section>
 
       <section className="panel" style={{ display: openSections.has('history') ? undefined : 'none' }}>

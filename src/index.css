@@ -2728,8 +2728,8 @@ button:focus-visible {
 
 .attitude-indicator {
   width: 100%;
-  max-width: 380px;
-  aspect-ratio: 1;
+  max-width: 480px;
+  aspect-ratio: 5 / 3;
 }
 
 .attitude-readout {
@@ -2779,6 +2779,21 @@ button:focus-visible {
 .synthetic-vision-target-readout span {
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+}
+
+.synthetic-vision-gps-btn {
+  background: var(--panel-raised);
+  border: 1px solid var(--cyan);
+  border-radius: 8px;
+  padding: 7px 12px;
+  color: var(--cyan);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.synthetic-vision-gps-btn:hover {
+  background: rgba(79, 209, 197, 0.1);
 }
 
 .attitude-controls {
