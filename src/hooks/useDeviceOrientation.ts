@@ -17,26 +17,21 @@ type PermissionState = 'idle' | 'requesting' | 'granted' | 'denied' | 'unsupport
 // absolute:true with a value that never moves no matter how you turn it.
 // That last one shows up on some Android/Chrome tablets with no real
 // magnetometer chip: instead of omitting heading, the platform hands back
-// a frozen placeholder (typically exactly 0°) that looks superficially
-// valid, so it needs to be caught by watching for zero variance rather
-// than by any field on the event itself.
+// a frozen placeholder (typically exactly 0°), sometimes for a single
+// event that never repeats at all — so it needs to be caught by checking
+// back after a delay, not by anything on the event itself.
 export interface HeadingDiagnostics {
   sawEvent: boolean
   sawAbsolute: boolean
   stuck: boolean
 }
 
-// A heading is treated as a frozen placeholder — rather than a real,
-// currently-steady reading — once it's held within STUCK_EPSILON_DEG of
-// its first value for at least STUCK_MIN_DURATION_MS *and* across at least
-// STUCK_MIN_SAMPLES events (time alone isn't enough on a device that polls
-// rarely; sample count alone isn't enough on one that polls very fast).
-// Real magnetometer output has at least a little sensor noise sample to
-// sample even in a hand that isn't visibly moving, so an exact-match run
-// this long is itself the signal something's wrong — most commonly no
-// actual magnetometer chip behind the reading at all.
-const STUCK_MIN_DURATION_MS = 2500
-const STUCK_MIN_SAMPLES = 15
+// How long to wait after the first usable heading sample before checking
+// whether it's actually moved. Long enough that a genuinely working
+// compass held still for a moment has time to show its normal sensor
+// noise; short enough not to leave the UI showing a wrong heading for too
+// long on a device that doesn't have one.
+const STUCK_CHECK_DELAY_MS = 3000
 const STUCK_EPSILON_DEG = 0.03
 
 // iOS requires an explicit, user-gesture-triggered permission request before
@@ -111,18 +106,43 @@ export function useDeviceOrientation(active = true) {
   // time the heading crossed due north. Averaging the (cos, sin) pair and
   // re-deriving the angle from that sidesteps the wraparound entirely.
   const smoothHeadingVecRef = useRef<{ x: number; y: number } | null>(null)
-  // First raw heading and timestamp of the current unbroken run of
-  // near-identical samples, and how many samples long that run is — reset
-  // the instant a sample actually differs by more than STUCK_EPSILON_DEG.
-  const stuckRunRef = useRef<{ first: number; since: number; count: number } | null>(null)
+  // Anchor value/time for the current "is this actually moving" check, and
+  // the latest raw sample seen — compared against each other when the
+  // scheduled check fires, however many (or few — down to just one) events
+  // arrived in between.
+  const anchorRef = useRef<{ value: number; time: number } | null>(null)
+  const lastRawRef = useRef<number | null>(null)
   const stuckRef = useRef(false)
+  const stuckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (permission !== 'granted' || !active) return
     smoothHeadingVecRef.current = null
-    stuckRunRef.current = null
+    anchorRef.current = null
+    lastRawRef.current = null
     stuckRef.current = false
+    if (stuckTimerRef.current !== null) {
+      clearTimeout(stuckTimerRef.current)
+      stuckTimerRef.current = null
+    }
     setDiagnostics({ sawEvent: false, sawAbsolute: false, stuck: false })
+
+    function scheduleStuckCheck() {
+      if (stuckTimerRef.current !== null) clearTimeout(stuckTimerRef.current)
+      stuckTimerRef.current = setTimeout(() => {
+        stuckTimerRef.current = null
+        const anchor = anchorRef.current
+        const last = lastRawRef.current
+        if (anchor === null || last === null) return
+        const delta = Math.abs(((last - anchor.value + 540) % 360) - 180)
+        if (delta <= STUCK_EPSILON_DEG) {
+          stuckRef.current = true
+          smoothHeadingVecRef.current = null
+          setHeading(null)
+          setDiagnostics((prev) => ({ ...prev, stuck: true }))
+        }
+      }, STUCK_CHECK_DELAY_MS)
+    }
 
     function handleOrientation(e: DeviceOrientationEvent) {
       const webkitHeading = (e as DeviceOrientationEvent & { webkitCompassHeading?: number })
@@ -134,37 +154,38 @@ export function useDeviceOrientation(active = true) {
         rawHeading = (360 - e.alpha) % 360
       }
 
-      if (rawHeading !== null) {
-        const now = performance.now()
-        const run = stuckRunRef.current
-        const delta = run ? Math.abs(((rawHeading - run.first + 540) % 360) - 180) : 0
-        if (!run || delta > STUCK_EPSILON_DEG) {
-          stuckRunRef.current = { first: rawHeading, since: now, count: 1 }
-          if (stuckRef.current) {
-            stuckRef.current = false
-            setDiagnostics((prev) => ({ ...prev, stuck: false }))
-          }
-        } else {
-          run.count++
-          if (
-            !stuckRef.current &&
-            run.count >= STUCK_MIN_SAMPLES &&
-            now - run.since >= STUCK_MIN_DURATION_MS
-          ) {
-            stuckRef.current = true
-            smoothHeadingVecRef.current = null
-            setHeading(null)
-            setDiagnostics((prev) => ({ ...prev, stuck: true }))
-          }
-        }
-      }
-
       setDiagnostics((prev) => ({
         ...prev,
         sawEvent: true,
         sawAbsolute: prev.sawAbsolute || rawHeading !== null
       }))
-      if (rawHeading === null || stuckRef.current) return
+      if (rawHeading === null) return
+
+      lastRawRef.current = rawHeading
+
+      if (anchorRef.current === null) {
+        // First usable sample of this run — start the clock on checking
+        // whether it actually moves. Covers everything from a device that
+        // fires exactly one synthetic event and then goes silent forever,
+        // to one that keeps firing steadily but always with the same
+        // frozen value — the check below doesn't care which.
+        anchorRef.current = { value: rawHeading, time: performance.now() }
+        scheduleStuckCheck()
+      } else if (stuckRef.current) {
+        // Already flagged stuck this session, but a real change just came
+        // in — trust it again rather than staying stuck forever, and
+        // restart the check against this new anchor.
+        const delta = Math.abs(((rawHeading - anchorRef.current.value + 540) % 360) - 180)
+        if (delta > STUCK_EPSILON_DEG) {
+          stuckRef.current = false
+          anchorRef.current = { value: rawHeading, time: performance.now() }
+          smoothHeadingVecRef.current = null
+          setDiagnostics((prev) => ({ ...prev, stuck: false }))
+          scheduleStuckCheck()
+        }
+      }
+
+      if (stuckRef.current) return
 
       const rad = (rawHeading * Math.PI) / 180
       const vec = { x: Math.cos(rad), y: Math.sin(rad) }
@@ -195,6 +216,7 @@ export function useDeviceOrientation(active = true) {
         'deviceorientationabsolute',
         handleOrientation as unknown as EventListener
       )
+      if (stuckTimerRef.current !== null) clearTimeout(stuckTimerRef.current)
     }
   }, [permission, active])
 
