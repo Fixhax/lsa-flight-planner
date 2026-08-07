@@ -803,6 +803,14 @@ button:focus-visible {
   cursor: grab;
 }
 
+/* Boosts contrast/saturation on the OpenAIP raster overlay's own tile
+   images — the pre-rendered airspace/airport lines were hard to make out
+   blended into the base map otherwise, and there's no vector line weight
+   to adjust from this end since OpenAIP serves finished PNG tiles. */
+.openaip-tile-layer {
+  filter: contrast(1.3) saturate(1.5);
+}
+
 .leaflet-popup-content-wrapper {
   background: var(--panel-raised);
   color: var(--text);
@@ -2183,6 +2191,25 @@ button:focus-visible {
 .map-undo-btn:disabled {
   opacity: 0.35;
   cursor: default;
+}
+
+.map-etabar-btn {
+  width: 44px;
+  height: 44px;
+  background: var(--panel-raised);
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.map-etabar-btn:hover {
+  background: var(--panel);
+}
+
+.map-etabar-btn.active {
+  background: #6ee7b7;
+  color: #0d1117;
 }
 
 .map-engineout-error {

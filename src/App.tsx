@@ -1153,6 +1153,7 @@ export default function App() {
           stop={gps.stop}
           wakeLockSupported={wakeLock.supported}
           wakeLockHeld={wakeLock.held}
+          wakeLockError={wakeLock.error}
         />
       </section>
 

@@ -7,13 +7,20 @@ import { useEffect, useState } from 'react'
 // distinguishes "not held because the browser can't" from "not held
 // because tracking is off" — reported to the UI rather than failing
 // silently either way.
-export function useWakeLock(active: boolean): { supported: boolean; held: boolean } {
+export function useWakeLock(active: boolean): { supported: boolean; held: boolean; error: string | null } {
   const [held, setHeld] = useState(false)
+  // Surfaced to the UI rather than swallowed — a wake lock that's
+  // "supported" per feature detection but silently fails to acquire
+  // (denied, reclaimed under battery saver, page not actually visible per
+  // the browser's own stricter check, etc.) used to look identical to one
+  // that's simply not held yet, giving no signal that anything went wrong.
+  const [error, setError] = useState<string | null>(null)
   const supported = typeof navigator !== 'undefined' && 'wakeLock' in navigator
 
   useEffect(() => {
     if (!active || !supported) {
       setHeld(false)
+      setError(null)
       return
     }
 
@@ -28,12 +35,11 @@ export function useWakeLock(active: boolean): { supported: boolean; held: boolea
           return
         }
         setHeld(true)
+        setError(null)
         sentinel.addEventListener('release', () => setHeld(false))
-      } catch {
-        // Denied, or the browser reclaimed it (e.g. low battery) — just
-        // reflect "not held" rather than surfacing an error for something
-        // that isn't actionable from here.
+      } catch (e) {
         setHeld(false)
+        setError(e instanceof Error ? `${e.name}: ${e.message}` : 'Could not acquire wake lock.')
       }
     }
 
@@ -55,5 +61,5 @@ export function useWakeLock(active: boolean): { supported: boolean; held: boolea
     }
   }, [active, supported])
 
-  return { supported, held }
+  return { supported, held, error }
 }

@@ -13,6 +13,7 @@ interface Props {
   stop: () => void
   wakeLockSupported?: boolean
   wakeLockHeld?: boolean
+  wakeLockError?: string | null
 }
 
 export default function LiveTracking({
@@ -25,7 +26,8 @@ export default function LiveTracking({
   start,
   stop,
   wakeLockSupported,
-  wakeLockHeld
+  wakeLockHeld,
+  wakeLockError
 }: Props) {
   const remaining = position ? estimateRemaining(waypoints, position, fallbackGroundSpeedKt) : null
 
@@ -52,8 +54,17 @@ export default function LiveTracking({
             {remaining?.usingGpsSpeed && ' \u00b7 using live GPS ground speed'}
             {wakeLockSupported === false
               ? ' \u00b7 screen may still sleep (not supported on this browser)'
-              : wakeLockHeld && ' \u00b7 screen kept awake'}
+              : wakeLockHeld
+                ? ' \u00b7 screen kept awake'
+                : wakeLockError && ' \u00b7 screen may sleep (wake lock failed)'}
           </p>
+          {wakeLockError && !wakeLockHeld && wakeLockSupported && (
+            <p className="footnote">
+              Wake lock error: {wakeLockError}. Some browsers only grant this while the tab is the
+              active, foreground one \u2014 check you haven't switched away or let the device's own screen
+              timeout run out before GPS tracking started.
+            </p>
+          )}
           {remaining && Number.isFinite(remaining.etaMs) ? (
             <div className="totals-grid timer-summary">
               <div>

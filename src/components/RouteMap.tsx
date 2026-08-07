@@ -67,7 +67,7 @@ const midpointIcon = L.divIcon({
 // map long-press. Generous, since the rendered line itself is only 4px
 // wide — matches the same "way bigger than the visible mark" reasoning as
 // the waypoint/midpoint/airfield icon hit areas.
-const LINE_HIT_TOLERANCE_PX = 30
+const LINE_HIT_TOLERANCE_PX = 44
 
 // Perpendicular distance in screen pixels from a point to a line segment,
 // clamped to the segment's ends — used to figure out which leg of the
@@ -217,6 +217,7 @@ export default function RouteMap({
   const infoBtnRef = useRef<HTMLButtonElement | null>(null)
   const engineOutBtnRef = useRef<HTMLButtonElement | null>(null)
   const undoBtnRef = useRef<HTMLButtonElement | null>(null)
+  const etaBarBtnRef = useRef<HTMLButtonElement | null>(null)
   const wasFollowingRef = useRef(false)
   const longPressMenuRef = useRef<HTMLDivElement | null>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -240,6 +241,10 @@ export default function RouteMap({
   // currently pointing "up" on screen — 0 means north-up.
   const [follow, setFollow] = useState(false)
   const [rotationDeg, setRotationDeg] = useState(0)
+  // The "how far will I get" time-ticked bar — on by default, but it's
+  // extra clutter once you know your own speed/heading well enough not to
+  // need it, so it's a toggle rather than always-on.
+  const [showEtaBar, setShowEtaBar] = useState(true)
 
   // Push-and-hold on empty map space opens a small "add waypoint here" /
   // "direct to here" menu at that spot. screenX/screenY are relative to
@@ -324,7 +329,14 @@ export default function RouteMap({
             // and returns the same blank tile everywhere — which is why the
             // overlay drew nothing despite loading successfully (200 OK).
             detectRetina: true,
-            opacity: 0.8
+            // Fully opaque plus a contrast/saturation boost on the tile
+            // images themselves (via CSS, since the raster tiles come
+            // pre-rendered from OpenAIP — there's no vector line weight to
+            // adjust on this end) — the airspace/airport lines were
+            // reportedly hard to make out blended into the base map at the
+            // previous 0.8 opacity.
+            opacity: 1,
+            className: 'openaip-tile-layer'
           }
         )
       }
@@ -419,6 +431,23 @@ export default function RouteMap({
       }
     })
     new UndoControl({ position: 'topleft' }).addTo(map)
+
+    // Toggles the "how far will I get" time-ticked bar on/off — it's
+    // useful but adds visual clutter once you're used to your own numbers,
+    // so it shouldn't be forced on with no way to hide it.
+    const EtaBarControl = L.Control.extend({
+      onAdd: function () {
+        const btn = L.DomUtil.create('button', 'map-etabar-btn')
+        btn.type = 'button'
+        btn.innerHTML = '&#8618;'
+        btn.title = 'Toggle the ETA bar'
+        L.DomEvent.disableClickPropagation(btn)
+        btn.onclick = () => setShowEtaBar((s) => !s)
+        etaBarBtnRef.current = btn
+        return btn
+      }
+    })
+    new EtaBarControl({ position: 'topleft' }).addTo(map)
 
     // Manually panning the map means the pilot wants to look elsewhere —
     // drop out of follow mode rather than keep fighting their drag on the
@@ -676,15 +705,19 @@ export default function RouteMap({
       const routeLatLngs = valid.map((wp) => [wp.lat, wp.lon] as L.LatLngTuple)
       // Dark casing underneath the bright route line, same trick used for
       // the traffic pattern legs — keeps it readable against light terrain
-      // tiles, not just dark ones.
-      L.polyline(routeLatLngs, { color: '#0d1117', weight: 7, opacity: 0.6 }).addTo(layerGroup)
-      L.polyline(routeLatLngs, { color: '#4fd1c5', weight: 4, opacity: 1 }).addTo(layerGroup)
-      // Press-and-drag-to-insert-a-waypoint is handled at the map-container
+      // tiles, not just dark ones. interactive:false on both — press-and-
+      // drag-to-insert-a-waypoint is handled entirely at the map-container
       // level (see closestRouteHit / handlePointerDown in the map-creation
-      // effect above) rather than as a listener on a layer here — hit-
-      // testing against the route line is done in screen-pixel space from
-      // the raw pointer position, so no separate invisible hit-target layer
-      // is needed.
+      // effect above), doing its own screen-pixel hit-testing rather than
+      // depending on Leaflet's per-layer event handling at all. Leaving
+      // these interactive left Leaflet's own Path click/touch handling
+      // (which by default stops the underlying native event from bubbling
+      // any further — bubblingMouseEvents defaults to false) able to
+      // swallow a touch landing exactly on the rendered line pixels before
+      // it ever reached our container-level listener, which read as the
+      // grab gesture randomly just not registering.
+      L.polyline(routeLatLngs, { color: '#0d1117', weight: 7, opacity: 0.6, interactive: false }).addTo(layerGroup)
+      L.polyline(routeLatLngs, { color: '#4fd1c5', weight: 4, opacity: 1, interactive: false }).addTo(layerGroup)
     }
 
     const idsKey = valid.map((w) => w.id).join(',')
@@ -762,7 +795,7 @@ export default function RouteMap({
     const layer = etaBarLayerRef.current
     if (!layer) return
     layer.clearLayers()
-    if (!livePosition || livePosition.headingDeg === undefined) return
+    if (!showEtaBar || !livePosition || livePosition.headingDeg === undefined) return
 
     const usingGpsSpeed = livePosition.speedKt !== undefined && livePosition.speedKt > 5
     const speedKt = usingGpsSpeed ? livePosition.speedKt! : cruiseSpeedKt
@@ -803,7 +836,7 @@ export default function RouteMap({
         interactive: false
       }).addTo(layer)
     })
-  }, [livePosition, cruiseSpeedKt])
+  }, [livePosition, cruiseSpeedKt, showEtaBar])
 
   // Engine-out mode: a heavier, more alarming line to the targeted
   // airfield (distinct from the manual direct-to line above), plus the
@@ -978,6 +1011,10 @@ export default function RouteMap({
   useEffect(() => {
     if (undoBtnRef.current) undoBtnRef.current.disabled = !canUndoWaypoint
   }, [canUndoWaypoint])
+
+  useEffect(() => {
+    etaBarBtnRef.current?.classList.toggle('active', showEtaBar)
+  }, [showEtaBar])
 
   // Rotates the whole map to the manually-chosen direction, by CSS-rotating
   // the container itself — tiles and markers (including the live plane
