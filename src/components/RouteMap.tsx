@@ -617,23 +617,33 @@ export default function RouteMap({
 
         let started = false
         let previewMarker: L.Marker | null = null
+        // Captured as its own const, typed definitely non-null, specifically
+        // so the nested closures below can use it — TypeScript doesn't
+        // carry the `if (!map...) return` narrowing above into nested
+        // `function` declarations (only into arrow functions/expressions
+        // evaluated in place), so referencing the outer `map` directly
+        // inside handlePointerMove/endDrag would otherwise still type as
+        // Map | null there.
+        const currentMap: L.Map = map
 
-        function handlePointerMove(ev: PointerEvent) {
-          const latlng = map.mouseEventToLatLng(ev as unknown as MouseEvent)
+        const handlePointerMove = (ev: PointerEvent) => {
+          const latlng = currentMap.mouseEventToLatLng(ev as unknown as MouseEvent)
           if (!started) {
             if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < LINE_DRAG_START_PX) return
             started = true
-            previewMarker = L.marker(latlng, { icon: midpointIcon, opacity: 0.9, interactive: false }).addTo(map)
+            previewMarker = L.marker(latlng, { icon: midpointIcon, opacity: 0.9, interactive: false }).addTo(
+              currentMap
+            )
           }
           previewMarker?.setLatLng(latlng)
         }
 
-        function endDrag(ev: PointerEvent) {
+        const endDrag = (ev: PointerEvent) => {
           window.removeEventListener('pointermove', handlePointerMove)
           window.removeEventListener('pointerup', endDrag)
           window.removeEventListener('pointercancel', endDrag)
           if (started && previewMarker) {
-            const finalLatLng = map.mouseEventToLatLng(ev as unknown as MouseEvent)
+            const finalLatLng = currentMap.mouseEventToLatLng(ev as unknown as MouseEvent)
             previewMarker.remove()
             onInsertWaypoint(afterIndex, finalLatLng.lat, finalLatLng.lng)
           }
