@@ -603,7 +603,12 @@ export default function RouteMap({
       // A plain tap (no real movement) intentionally does nothing, so
       // tapping the line to glance at it doesn't accidentally insert a
       // waypoint at zero drag distance.
-      hitLine.on('mousedown', (e: L.LeafletMouseEvent) => {
+      hitLine.on('mousedown', (evt) => {
+        // Cast inside the body rather than typing the callback parameter
+        // itself as LeafletMouseEvent — Leaflet's .on() typings expect a
+        // plain LeafletEvent handler, and a narrower parameter type there
+        // fails TypeScript's contravariant parameter check.
+        const e = evt as L.LeafletMouseEvent
         const orig = e.originalEvent as PointerEvent
         L.DomEvent.stop(orig)
         const startX = orig.clientX
