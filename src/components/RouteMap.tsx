@@ -50,12 +50,51 @@ const waypointIcon = L.divIcon({
   iconAnchor: [13, 13]
 })
 
+// Reused as the drag-preview marker shown while pressing and dragging
+// anywhere on the route line (see the line-drag handler below) — there's
+// no longer a permanently-placed midpoint dot, but the same small-dot
+// styling still reads well as a "you're about to drop a waypoint here"
+// indicator.
 const midpointIcon = L.divIcon({
   className: 'map-midpoint-icon',
   html: '<div class="map-midpoint-dot"></div>',
   iconSize: [20, 20],
   iconAnchor: [10, 10]
 })
+
+// How far the pointer has to move from where it went down on the route
+// line before a drag actually starts (and a new waypoint gets created) —
+// below this, it reads as just a tap on the line (which does nothing),
+// not an attempt to pull a new waypoint out of it.
+const LINE_DRAG_START_PX = 8
+
+// Perpendicular distance in screen pixels from a point to a line segment,
+// clamped to the segment's ends — used to figure out which leg of the
+// route a press-on-the-line gesture actually landed nearest to.
+function pointToSegmentDistancePx(p: L.Point, a: L.Point, b: L.Point): number {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const lenSq = dx * dx + dy * dy
+  if (lenSq === 0) return Math.hypot(p.x - a.x, p.y - a.y)
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq))
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
+}
+
+function closestLegIndex(map: L.Map, at: L.LatLng, valid: { lat: number; lon: number }[]): number {
+  const p = map.latLngToContainerPoint(at)
+  let bestIdx = 0
+  let bestDist = Infinity
+  for (let i = 0; i < valid.length - 1; i++) {
+    const a = map.latLngToContainerPoint([valid[i].lat, valid[i].lon])
+    const b = map.latLngToContainerPoint([valid[i + 1].lat, valid[i + 1].lon])
+    const dist = pointToSegmentDistancePx(p, a, b)
+    if (dist < bestDist) {
+      bestDist = dist
+      bestIdx = i
+    }
+  }
+  return bestIdx
+}
 
 // Every curated strip, shown always (not just ones in the current route) so
 // nearby fields are visible for reference — a distinct diamond shape and
@@ -391,7 +430,7 @@ export default function RouteMap({
 
     function isOnInteractiveElement(target: EventTarget | null) {
       const el = target as HTMLElement | null
-      return !!el?.closest('.leaflet-marker-icon, .leaflet-popup, .leaflet-control')
+      return !!el?.closest('.leaflet-marker-icon, .leaflet-popup, .leaflet-control, .route-line-hit-area')
     }
 
     function handlePointerDown(e: PointerEvent) {
@@ -543,22 +582,62 @@ export default function RouteMap({
       L.polyline(routeLatLngs, { color: '#0d1117', weight: 7, opacity: 0.6 }).addTo(layerGroup)
       L.polyline(routeLatLngs, { color: '#4fd1c5', weight: 4, opacity: 1 }).addTo(layerGroup)
 
-      // Midpoint drag handles: dragging one inserts a new waypoint between
-      // the two it sits between, at the dropped position.
-      for (let i = 0; i < valid.length - 1; i++) {
-        const a = valid[i]
-        const b = valid[i + 1]
-        const midLat = (a.lat + b.lat) / 2
-        const midLon = (a.lon + b.lon) / 2
-        const afterIndex = waypoints.findIndex((w) => w.id === a.id)
+      // Invisible, much wider line laid on top purely as a touch/click
+      // target — the visible line above is only 4px wide, nowhere near
+      // enough to reliably grab with a finger, same reasoning as the
+      // oversized waypoint/midpoint/airfield icon hit areas elsewhere in
+      // this file. className lets the long-press handler's
+      // isOnInteractiveElement check recognize it and skip its own
+      // long-press timer, so the two gestures never both fire.
+      const hitLine = L.polyline(routeLatLngs, {
+        color: '#000',
+        weight: 24,
+        opacity: 0,
+        className: 'route-line-hit-area'
+      }).addTo(layerGroup)
 
-        const handle = L.marker([midLat, midLon], { icon: midpointIcon, draggable: true, opacity: 0.85 })
-        handle.on('dragend', () => {
-          const pos = handle.getLatLng()
-          onInsertWaypoint(afterIndex, pos.lat, pos.lng)
-        })
-        handle.addTo(layerGroup)
-      }
+      // Press anywhere on the line and drag to pull a new waypoint out of
+      // whichever leg you grabbed, dropped wherever you release — replaces
+      // the old fixed-at-the-midpoint drag handles with something you can
+      // start from any point along the route, not just its exact center.
+      // A plain tap (no real movement) intentionally does nothing, so
+      // tapping the line to glance at it doesn't accidentally insert a
+      // waypoint at zero drag distance.
+      hitLine.on('mousedown', (e: L.LeafletMouseEvent) => {
+        const orig = e.originalEvent as PointerEvent
+        L.DomEvent.stop(orig)
+        const startX = orig.clientX
+        const startY = orig.clientY
+        const afterIndex = waypoints.findIndex((w) => w.id === valid[closestLegIndex(map, e.latlng, valid)].id)
+
+        let started = false
+        let previewMarker: L.Marker | null = null
+
+        function handlePointerMove(ev: PointerEvent) {
+          const latlng = map.mouseEventToLatLng(ev as unknown as MouseEvent)
+          if (!started) {
+            if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < LINE_DRAG_START_PX) return
+            started = true
+            previewMarker = L.marker(latlng, { icon: midpointIcon, opacity: 0.9, interactive: false }).addTo(map)
+          }
+          previewMarker?.setLatLng(latlng)
+        }
+
+        function endDrag(ev: PointerEvent) {
+          window.removeEventListener('pointermove', handlePointerMove)
+          window.removeEventListener('pointerup', endDrag)
+          window.removeEventListener('pointercancel', endDrag)
+          if (started && previewMarker) {
+            const finalLatLng = map.mouseEventToLatLng(ev as unknown as MouseEvent)
+            previewMarker.remove()
+            onInsertWaypoint(afterIndex, finalLatLng.lat, finalLatLng.lng)
+          }
+        }
+
+        window.addEventListener('pointermove', handlePointerMove)
+        window.addEventListener('pointerup', endDrag)
+        window.addEventListener('pointercancel', endDrag)
+      })
     }
 
     const idsKey = valid.map((w) => w.id).join(',')
