@@ -69,6 +69,14 @@ const midpointIcon = L.divIcon({
 // the waypoint/midpoint/airfield icon hit areas.
 const LINE_HIT_TOLERANCE_PX = 44
 
+// Within this many pixels of an existing waypoint's own coordinate, a
+// press is treated as meaning that waypoint (its own popup/drag), not a
+// line-grab — waypoints sit exactly ON the route line, so line-tolerance
+// alone can't tell "wants this point" from "wants to insert a new one
+// right next to it" apart. Smaller than LINE_HIT_TOLERANCE_PX on purpose:
+// most of a line-grab attempt near an existing point should still win.
+const WAYPOINT_CORE_PX = 15
+
 // Perpendicular distance in screen pixels from a point to a line segment,
 // clamped to the segment's ends — used to figure out which leg of the
 // route a press-on-the-line gesture actually landed nearest to.
@@ -107,6 +115,26 @@ function closestRouteHit(
     }
   }
   return { legIndex: bestIdx, distPx: bestDist }
+}
+
+// How far a raw client-space point is from the nearest existing waypoint's
+// own coordinate, in screen pixels — see WAYPOINT_CORE_PX above for why
+// this is checked separately from closestRouteHit.
+function nearestWaypointDistancePx(
+  map: L.Map,
+  valid: { lat: number; lon: number }[],
+  clientX: number,
+  clientY: number
+): number {
+  if (valid.length === 0) return Infinity
+  const p = map.mouseEventToContainerPoint({ clientX, clientY } as unknown as MouseEvent)
+  let best = Infinity
+  for (const wp of valid) {
+    const wpPoint = map.latLngToContainerPoint([wp.lat, wp.lon])
+    const dist = Math.hypot(p.x - wpPoint.x, p.y - wpPoint.y)
+    if (dist < best) best = dist
+  }
+  return best
 }
 
 // Every curated strip, shown always (not just ones in the current route) so
@@ -549,16 +577,34 @@ export default function RouteMap({
     }
 
     function handlePointerDown(e: PointerEvent) {
-      if (isOnInteractiveElement(e.target)) return
       const valid = validWaypointsNow()
       const hit = closestRouteHit(map, valid, e.clientX, e.clientY)
+      // Waypoint markers sit exactly on the route line and have a
+      // deliberately oversized touch target (26px) of their own — without
+      // this, a press meant for the line right next to an existing point
+      // would land on that marker's target instead, and Leaflet's own
+      // marker click-handling (registered directly on the marker, so it
+      // runs before this listener even without capture) would open its
+      // popup on release, since a hold that never moved reads as a plain
+      // click to Leaflet. Only actually on top of a waypoint (within
+      // WAYPOINT_CORE_PX) still defers to it; anywhere else within line
+      // tolerance claims the gesture here instead, via a capture-phase
+      // stopPropagation so it never reaches the marker's own listeners.
+      const nearestWpDist = nearestWaypointDistancePx(map, valid, e.clientX, e.clientY)
+      const wantsLineGrab = !!hit && hit.distPx <= LINE_HIT_TOLERANCE_PX && nearestWpDist > WAYPOINT_CORE_PX
+
+      if (wantsLineGrab) {
+        e.stopPropagation()
+      } else if (isOnInteractiveElement(e.target)) {
+        return
+      }
 
       longPressStartRef.current = { x: e.clientX, y: e.clientY }
       clearLongPressTimer()
       const { clientX, clientY } = e
       longPressTimerRef.current = setTimeout(() => {
         longPressTimerRef.current = null
-        if (hit && hit.distPx <= LINE_HIT_TOLERANCE_PX) {
+        if (wantsLineGrab && hit) {
           showLineDragPreview(clientX, clientY, hit.legIndex, valid)
         } else {
           openLongPressMenuAt(clientX, clientY)
@@ -592,7 +638,14 @@ export default function RouteMap({
     }
 
     const container = containerRef.current!
-    container.addEventListener('pointerdown', handlePointerDown)
+    // Capture phase specifically for pointerdown — Leaflet's own marker
+    // click/drag handling is registered directly on each marker's DOM
+    // element, which (being a descendant of this container) would
+    // otherwise always see the event first during the normal bubble
+    // phase, before this listener got a chance to decide whether a
+    // line-grab should take priority (see the comment in handlePointerDown
+    // for why that matters). Capture runs top-down, ahead of any of that.
+    container.addEventListener('pointerdown', handlePointerDown, { capture: true })
     container.addEventListener('pointermove', handlePointerMove)
     container.addEventListener('pointerup', handlePointerEnd)
     container.addEventListener('pointercancel', handlePointerEnd)
@@ -622,7 +675,7 @@ export default function RouteMap({
 
     return () => {
       clearLongPressTimer()
-      container.removeEventListener('pointerdown', handlePointerDown)
+      container.removeEventListener('pointerdown', handlePointerDown, { capture: true })
       container.removeEventListener('pointermove', handlePointerMove)
       container.removeEventListener('pointerup', handlePointerEnd)
       container.removeEventListener('pointercancel', handlePointerEnd)
