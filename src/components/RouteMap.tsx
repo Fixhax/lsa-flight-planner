@@ -500,7 +500,7 @@ export default function RouteMap({
     // natural gesture there. Plain native listeners rather than Leaflet
     // events, since Leaflet has no built-in long-press concept.
     const LONG_PRESS_MS = 550
-    const LONG_PRESS_MOVE_CANCEL_PX = 12
+    const LONG_PRESS_MOVE_CANCEL_PX = 18
     // How much further movement after the line-grab preview marker appears
     // counts as "actually dragged it somewhere" rather than "held still and
     // let go" — the latter cancels instead of inserting, so a long-press
@@ -595,6 +595,17 @@ export default function RouteMap({
 
       if (wantsLineGrab) {
         e.stopPropagation()
+        // Belt-and-suspenders alongside stopPropagation: explicitly
+        // disable Leaflet's own map panning for the duration of this
+        // gesture, rather than only relying on intercepting whichever raw
+        // DOM event Leaflet's Draggable happens to be listening for
+        // internally. Without this, a hold that got cancelled early by
+        // hand tremor (see LONG_PRESS_MOVE_CANCEL_PX) before the preview
+        // marker even appeared left the map free to start panning on
+        // whatever movement followed — read as "the first attempt moves
+        // the map instead of the line." Re-enabled the moment this
+        // gesture ends, cancels, or the pending timer gets cancelled.
+        map.dragging.disable()
       } else if (isOnInteractiveElement(e.target)) {
         return
       }
@@ -622,10 +633,17 @@ export default function RouteMap({
       if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > LONG_PRESS_MOVE_CANCEL_PX) {
         clearLongPressTimer()
         longPressStartRef.current = null
+        // The pending hold got cancelled by movement before it could turn
+        // into a line-grab (or menu) — free to pan normally from here on,
+        // same as if this had always been a plain drag.
+        map.dragging.enable()
       }
     }
 
     function handlePointerEnd(e: PointerEvent) {
+      // Always safe to call even if it was never disabled for this
+      // gesture — Leaflet's Handler.enable() is a no-op when already on.
+      map.dragging.enable()
       if (endLineDrag(e)) return
       clearLongPressTimer()
       longPressStartRef.current = null
