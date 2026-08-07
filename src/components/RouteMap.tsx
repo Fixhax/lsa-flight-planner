@@ -62,18 +62,12 @@ const midpointIcon = L.divIcon({
   iconAnchor: [10, 10]
 })
 
-// How far the pointer has to move from where it went down on the route
-// line before a drag actually starts (and a new waypoint gets created) —
-// below this, it reads as just a tap on the line (which does nothing),
-// not an attempt to pull a new waypoint out of it.
-const LINE_DRAG_START_PX = 8
-
 // How close a pointerdown has to land to the route line (in screen
 // pixels) to count as grabbing it, rather than being treated as an empty-
 // map long-press. Generous, since the rendered line itself is only 4px
 // wide — matches the same "way bigger than the visible mark" reasoning as
 // the waypoint/midpoint/airfield icon hit areas.
-const LINE_HIT_TOLERANCE_PX = 16
+const LINE_HIT_TOLERANCE_PX = 30
 
 // Perpendicular distance in screen pixels from a point to a line segment,
 // clamped to the segment's ends — used to figure out which leg of the
@@ -228,12 +222,14 @@ export default function RouteMap({
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const longPressStartRef = useRef<{ x: number; y: number } | null>(null)
   const airfieldPanelRef = useRef<HTMLDivElement | null>(null)
-  // Active "press and drag the route line to insert a waypoint" gesture,
-  // if one is in progress — see the pointerdown/move/up handlers below.
+  // Active "long-press the route line to insert a waypoint" gesture, if
+  // one is in progress — see the pointerdown/move/up handlers below. Only
+  // exists from the moment the long-press fires (the preview marker is
+  // already showing by then) through release.
   const lineDragRef = useRef<{
     afterIndex: number
-    started: boolean
-    previewMarker: L.Marker | null
+    moved: boolean
+    previewMarker: L.Marker
     startX: number
     startY: number
   } | null>(null)
@@ -448,6 +444,11 @@ export default function RouteMap({
     // events, since Leaflet has no built-in long-press concept.
     const LONG_PRESS_MS = 550
     const LONG_PRESS_MOVE_CANCEL_PX = 12
+    // How much further movement after the line-grab preview marker appears
+    // counts as "actually dragged it somewhere" rather than "held still and
+    // let go" — the latter cancels instead of inserting, so a long-press
+    // that's released in place isn't a surprising way to add a point.
+    const LINE_DRAG_COMMIT_PX = 8
 
     function clearLongPressTimer() {
       if (longPressTimerRef.current !== null) {
@@ -484,31 +485,36 @@ export default function RouteMap({
       )
     }
 
-    function startLineDrag(clientX: number, clientY: number, legIndex: number, valid: Waypoint[]) {
+    // Fires once the long-press completes on the line -- shows a draggable
+    // preview marker immediately as confirmation the grab landed, rather
+    // than requiring a further drag before there's any visible feedback at
+    // all (which made it feel unresponsive/hard to hit).
+    function showLineDragPreview(clientX: number, clientY: number, legIndex: number, valid: Waypoint[]) {
       const afterIndex = waypointsRef.current.findIndex((w) => w.id === valid[legIndex].id)
-      lineDragRef.current = { afterIndex, started: false, previewMarker: null, startX: clientX, startY: clientY }
+      const latlng = map.mouseEventToLatLng({ clientX, clientY } as unknown as MouseEvent)
+      const previewMarker = L.marker(latlng, { icon: midpointIcon, opacity: 0.9, interactive: false }).addTo(map)
+      lineDragRef.current = { afterIndex, moved: false, previewMarker, startX: clientX, startY: clientY }
     }
 
     function updateLineDrag(e: PointerEvent) {
       const drag = lineDragRef.current
       if (!drag) return
-      const latlng = map.mouseEventToLatLng(e as unknown as MouseEvent)
-      if (!drag.started) {
-        if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < LINE_DRAG_START_PX) return
-        drag.started = true
-        drag.previewMarker = L.marker(latlng, { icon: midpointIcon, opacity: 0.9, interactive: false }).addTo(map)
+      if (!drag.moved && Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) >= LINE_DRAG_COMMIT_PX) {
+        drag.moved = true
       }
-      drag.previewMarker?.setLatLng(latlng)
+      drag.previewMarker.setLatLng(map.mouseEventToLatLng(e as unknown as MouseEvent))
     }
 
     function endLineDrag(e: PointerEvent) {
       const drag = lineDragRef.current
       if (!drag) return false
       lineDragRef.current = null
-      if (drag.started && drag.previewMarker) {
+      if (drag.moved) {
         const finalLatLng = map.mouseEventToLatLng(e as unknown as MouseEvent)
         drag.previewMarker.remove()
         onInsertWaypointRef.current(drag.afterIndex, finalLatLng.lat, finalLatLng.lng)
+      } else {
+        drag.previewMarker.remove()
       }
       return true
     }
@@ -517,16 +523,17 @@ export default function RouteMap({
       if (isOnInteractiveElement(e.target)) return
       const valid = validWaypointsNow()
       const hit = closestRouteHit(map, valid, e.clientX, e.clientY)
-      if (hit && hit.distPx <= LINE_HIT_TOLERANCE_PX) {
-        startLineDrag(e.clientX, e.clientY, hit.legIndex, valid)
-        return
-      }
+
       longPressStartRef.current = { x: e.clientX, y: e.clientY }
       clearLongPressTimer()
       const { clientX, clientY } = e
       longPressTimerRef.current = setTimeout(() => {
         longPressTimerRef.current = null
-        openLongPressMenuAt(clientX, clientY)
+        if (hit && hit.distPx <= LINE_HIT_TOLERANCE_PX) {
+          showLineDragPreview(clientX, clientY, hit.legIndex, valid)
+        } else {
+          openLongPressMenuAt(clientX, clientY)
+        }
       }, LONG_PRESS_MS)
     }
 
