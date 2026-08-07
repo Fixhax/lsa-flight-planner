@@ -6,6 +6,36 @@ export interface MetarTafResult {
   taf: string | null
 }
 
+export interface MetarWind {
+  dirDeg: number | null // null when variable (VRB) — direction the wind is blowing FROM, per METAR convention
+  variable: boolean
+  speedKt: number
+  gustKt: number | null
+}
+
+// Pulls just the wind group out of a raw METAR — scans every token rather
+// than assuming a fixed position, since it's normally right after the
+// observation time but this stays correct even if that ever isn't true.
+// Returns null if no wind group is found (a malformed/unexpected report),
+// not the same as a genuinely calm-wind report (which this does parse,
+// as 0deg/0kt).
+export function parseMetarWind(raw: string): MetarWind | null {
+  const tokens = raw.trim().split(/\s+/)
+  for (const token of tokens) {
+    const m = token.match(/^(\d{3}|VRB)(\d{2,3})(?:G(\d{2,3}))?(KT|MPS)$/)
+    if (!m) continue
+    const [, dir, speed, gust, unit] = m
+    const toKt = (v: number) => (unit === 'MPS' ? v * 1.94384 : v)
+    return {
+      dirDeg: dir === 'VRB' ? null : parseInt(dir, 10),
+      variable: dir === 'VRB',
+      speedKt: toKt(parseInt(speed, 10)),
+      gustKt: gust ? toKt(parseInt(gust, 10)) : null
+    }
+  }
+  return null
+}
+
 export interface NearestStation {
   icao: string
   distanceNm: number

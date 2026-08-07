@@ -9,6 +9,7 @@ import type { TrafficPatternResult } from '../lib/trafficPattern'
 import type { EngineOutTarget, UnverifiedSite } from '../lib/engineOut'
 import MapInfoDrawer from './MapInfoDrawer'
 import AirfieldNotes from './AirfieldNotes'
+import WindsockOverlay from './WindsockOverlay'
 import { useCloseOnOutsideClick } from '../hooks/useCloseOnOutsideClick'
 
 interface Props {
@@ -142,6 +143,7 @@ export default function RouteMap({
   const liveGlideLayerRef = useRef<L.LayerGroup | null>(null)
   const directToLayerRef = useRef<L.LayerGroup | null>(null)
   const engineOutLayerRef = useRef<L.LayerGroup | null>(null)
+  const etaBarLayerRef = useRef<L.LayerGroup | null>(null)
   const liveMarkerRef = useRef<L.Marker | null>(null)
   const prevIdsKeyRef = useRef<string>('')
   const onToggleFullscreenRef = useRef(onToggleFullscreen)
@@ -438,6 +440,7 @@ export default function RouteMap({
     liveGlideLayerRef.current = L.layerGroup().addTo(map)
     directToLayerRef.current = L.layerGroup().addTo(map)
     engineOutLayerRef.current = L.layerGroup().addTo(map)
+    etaBarLayerRef.current = L.layerGroup().addTo(map)
 
     // Every curated strip is shown on the map at all times, not just ones
     // in the current route — this list never changes at runtime, so it's
@@ -467,6 +470,7 @@ export default function RouteMap({
       liveGlideLayerRef.current = null
       directToLayerRef.current = null
       engineOutLayerRef.current = null
+      etaBarLayerRef.current = null
     }
   }, [])
 
@@ -619,6 +623,61 @@ export default function RouteMap({
     L.polyline(latLngs, { color: '#0d1117', weight: 7, opacity: 0.6 }).addTo(layer)
     L.polyline(latLngs, { color: '#ff3b3b', weight: 4, opacity: 1, dashArray: '2 10' }).addTo(layer)
   }, [livePosition, directTo])
+
+  // A "how far will I get" bar along the current track — ticked every 5
+  // minutes of flight time (converted to distance via current ground
+  // speed, falling back to planned cruise speed the same way the direct-to
+  // HUD estimate does) rather than fixed-distance rings, since time-to-fly
+  // is usually the more useful question in the air. Mint green specifically
+  // because every other color on this map is already spoken for (cyan
+  // route, amber glide, red-orange direct-to, heavier red engine-out,
+  // magenta live marker, purple history, yellow pattern).
+  useEffect(() => {
+    const layer = etaBarLayerRef.current
+    if (!layer) return
+    layer.clearLayers()
+    if (!livePosition || livePosition.headingDeg === undefined) return
+
+    const usingGpsSpeed = livePosition.speedKt !== undefined && livePosition.speedKt > 5
+    const speedKt = usingGpsSpeed ? livePosition.speedKt! : cruiseSpeedKt
+    if (!speedKt || speedKt <= 0) return
+
+    const course = livePosition.headingDeg
+    const minuteMarks = [5, 10, 15, 20, 25, 30]
+    const points = minuteMarks.map((min) => ({
+      min,
+      point: destinationPoint(livePosition, course, speedKt * (min / 60))
+    }))
+
+    const barLatLngs: L.LatLngTuple[] = [
+      [livePosition.lat, livePosition.lon],
+      ...points.map(({ point }) => [point.lat, point.lon] as L.LatLngTuple)
+    ]
+    L.polyline(barLatLngs, { color: '#0d1117', weight: 5, opacity: 0.5 }).addTo(layer)
+    L.polyline(barLatLngs, { color: '#6ee7b7', weight: 2.5, opacity: 0.9, dashArray: '1 8' }).addTo(layer)
+
+    const tickHalfLengthNm = 0.6
+    points.forEach(({ min, point }) => {
+      const tickA = destinationPoint(point, course + 90, tickHalfLengthNm)
+      const tickB = destinationPoint(point, course - 90, tickHalfLengthNm)
+      L.polyline(
+        [
+          [tickA.lat, tickA.lon],
+          [tickB.lat, tickB.lon]
+        ],
+        { color: '#6ee7b7', weight: 2.5, opacity: 0.9 }
+      ).addTo(layer)
+      L.marker([point.lat, point.lon], {
+        icon: L.divIcon({
+          className: 'map-eta-tick-icon',
+          html: `<div class="map-eta-tick-label">${min}m</div>`,
+          iconSize: [28, 16],
+          iconAnchor: [14, 8]
+        }),
+        interactive: false
+      }).addTo(layer)
+    })
+  }, [livePosition, cruiseSpeedKt])
 
   // Engine-out mode: a heavier, more alarming line to the targeted
   // airfield (distinct from the manual direct-to line above), plus the
@@ -953,6 +1012,7 @@ export default function RouteMap({
           )}
         </div>
       )}
+      <WindsockOverlay livePosition={livePosition ?? null} waypoints={waypoints} rotationDeg={rotationDeg} />
       <RotateKnob rotationDeg={rotationDeg} onChange={setRotationDeg} />
       {showInfoDrawer && (
         <MapInfoDrawer
