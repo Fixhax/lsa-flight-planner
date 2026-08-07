@@ -103,11 +103,13 @@ export default function Bearing({
 
   const headingHint =
     heading === null && permission === 'granted'
-      ? !diagnostics.sawEvent
-        ? "No orientation sensor detected on this device — heading/bearing here will have to come from GPS track instead, once you're moving."
-        : !diagnostics.sawAbsolute
-          ? "This device reports an orientation sensor, but it isn't giving a calibrated compass heading — try moving it in a slow figure-8 to calibrate the magnetometer, or check its location/compass settings. Some tablets have no magnetometer at all, in which case this won't resolve."
-          : null
+      ? diagnostics.stuck
+        ? "This device reports a compass heading, but it never changes no matter which way you turn — that's a frozen placeholder value, not real sensor data (common on tablets with no actual magnetometer chip). Falling back to GPS track where possible; this won't resolve itself."
+        : !diagnostics.sawEvent
+          ? "No orientation sensor detected on this device — heading/bearing here will have to come from GPS track instead, once you're moving."
+          : !diagnostics.sawAbsolute
+            ? "This device reports an orientation sensor, but it isn't giving a calibrated compass heading — try moving it in a slow figure-8 to calibrate the magnetometer, or check its location/compass settings. Some tablets have no magnetometer at all, in which case this won't resolve."
+            : null
       : null
 
   if (!active) {
