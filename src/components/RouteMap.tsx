@@ -631,9 +631,28 @@ export default function RouteMap({
       longPressStartRef.current = null
     }
 
+    // A sustained touch-and-hold on Android Chrome fires this NATIVE
+    // 'contextmenu' event on its own, independently of and around the same
+    // ~550ms mark as our own JS long-press timer above — without this
+    // arbitration, that native event unconditionally opened the empty-map
+    // menu, overriding an in-progress or about-to-start line-grab (this is
+    // what "grab works but gets interrupted" turned out to be: two
+    // separate long-press mechanisms racing, only one of which knew about
+    // the line at all).
     function handleContextMenu(e: MouseEvent) {
-      if (isOnInteractiveElement(e.target)) return
+      const valid = validWaypointsNow()
+      const hit = closestRouteHit(map, valid, e.clientX, e.clientY)
+      const nearestWpDist = nearestWaypointDistancePx(map, valid, e.clientX, e.clientY)
+      const wantsLineGrab = !!hit && hit.distPx <= LINE_HIT_TOLERANCE_PX && nearestWpDist > WAYPOINT_CORE_PX
+
+      if (!wantsLineGrab && isOnInteractiveElement(e.target)) return
       e.preventDefault()
+      clearLongPressTimer()
+
+      if (wantsLineGrab && hit) {
+        if (!lineDragRef.current) showLineDragPreview(e.clientX, e.clientY, hit.legIndex, valid)
+        return
+      }
       openLongPressMenuAt(e.clientX, e.clientY)
     }
 
