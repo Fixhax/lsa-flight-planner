@@ -803,17 +803,6 @@ button:focus-visible {
   cursor: grab;
 }
 
-/* Invisible touch-target overlay on the route line itself — press and
-   drag anywhere along it to pull out a new waypoint (see RouteMap.tsx).
-   The grab cursor is the only visible hint on desktop that it's there. */
-.route-line-hit-area {
-  cursor: grab;
-}
-
-.route-line-hit-area:active {
-  cursor: grabbing;
-}
-
 .leaflet-popup-content-wrapper {
   background: var(--panel-raised);
   color: var(--text);

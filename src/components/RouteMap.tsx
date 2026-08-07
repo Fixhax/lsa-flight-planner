@@ -68,6 +68,13 @@ const midpointIcon = L.divIcon({
 // not an attempt to pull a new waypoint out of it.
 const LINE_DRAG_START_PX = 8
 
+// How close a pointerdown has to land to the route line (in screen
+// pixels) to count as grabbing it, rather than being treated as an empty-
+// map long-press. Generous, since the rendered line itself is only 4px
+// wide — matches the same "way bigger than the visible mark" reasoning as
+// the waypoint/midpoint/airfield icon hit areas.
+const LINE_HIT_TOLERANCE_PX = 16
+
 // Perpendicular distance in screen pixels from a point to a line segment,
 // clamped to the segment's ends — used to figure out which leg of the
 // route a press-on-the-line gesture actually landed nearest to.
@@ -80,8 +87,20 @@ function pointToSegmentDistancePx(p: L.Point, a: L.Point, b: L.Point): number {
   return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
 }
 
-function closestLegIndex(map: L.Map, at: L.LatLng, valid: { lat: number; lon: number }[]): number {
-  const p = map.latLngToContainerPoint(at)
+// Finds which leg of the route (if any) a raw client-space point landed
+// closest to, and how far away in pixels — used to hit-test a pointerdown
+// against the route line without depending on Leaflet's own per-layer
+// touch event handling, which turned out not to fire reliably on at least
+// one real Android tablet. Takes client coordinates directly (not a
+// latlng) since that's what a native PointerEvent gives us.
+function closestRouteHit(
+  map: L.Map,
+  valid: { lat: number; lon: number }[],
+  clientX: number,
+  clientY: number
+): { legIndex: number; distPx: number } | null {
+  if (valid.length < 2) return null
+  const p = map.mouseEventToContainerPoint({ clientX, clientY } as unknown as MouseEvent)
   let bestIdx = 0
   let bestDist = Infinity
   for (let i = 0; i < valid.length - 1; i++) {
@@ -93,7 +112,7 @@ function closestLegIndex(map: L.Map, at: L.LatLng, valid: { lat: number; lon: nu
       bestIdx = i
     }
   }
-  return bestIdx
+  return { legIndex: bestIdx, distPx: bestDist }
 }
 
 // Every curated strip, shown always (not just ones in the current route) so
@@ -191,6 +210,15 @@ export default function RouteMap({
   onToggleEngineOutRef.current = onToggleEngineOut
   const onUndoWaypointRef = useRef(onUndoWaypoint)
   onUndoWaypointRef.current = onUndoWaypoint
+  // Mirrored into refs so the mount-once map-creation effect below (whose
+  // pointerdown/move/up listeners are set up a single time) can still read
+  // the current waypoints and call the current onInsertWaypoint — that
+  // effect's own closures would otherwise be stuck with whatever these
+  // were on the very first render.
+  const waypointsRef = useRef(waypoints)
+  waypointsRef.current = waypoints
+  const onInsertWaypointRef = useRef(onInsertWaypoint)
+  onInsertWaypointRef.current = onInsertWaypoint
   const followBtnRef = useRef<HTMLButtonElement | null>(null)
   const infoBtnRef = useRef<HTMLButtonElement | null>(null)
   const engineOutBtnRef = useRef<HTMLButtonElement | null>(null)
@@ -200,6 +228,15 @@ export default function RouteMap({
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const longPressStartRef = useRef<{ x: number; y: number } | null>(null)
   const airfieldPanelRef = useRef<HTMLDivElement | null>(null)
+  // Active "press and drag the route line to insert a waypoint" gesture,
+  // if one is in progress — see the pointerdown/move/up handlers below.
+  const lineDragRef = useRef<{
+    afterIndex: number
+    started: boolean
+    previewMarker: L.Marker | null
+    startX: number
+    startY: number
+  } | null>(null)
 
   // "Follow me" (re-center on GPS position) and manual map rotation (via
   // the on-map rotate knob) are view-only preferences, kept local to the
@@ -430,11 +467,60 @@ export default function RouteMap({
 
     function isOnInteractiveElement(target: EventTarget | null) {
       const el = target as HTMLElement | null
-      return !!el?.closest('.leaflet-marker-icon, .leaflet-popup, .leaflet-control, .route-line-hit-area')
+      return !!el?.closest('.leaflet-marker-icon, .leaflet-popup, .leaflet-control')
+    }
+
+    // Press-and-drag-the-route-line-to-insert-a-waypoint, implemented as
+    // raw pointer events on the map container rather than a Leaflet layer
+    // 'mousedown' listener — an earlier version used the latter and it
+    // never fired reliably on at least one real Android tablet, even
+    // though the exact same raw-pointer approach already used for the
+    // long-press menu below works fine there. Hit-testing is done in
+    // screen-pixel space against the current route (via waypointsRef, kept
+    // fresh every render — this effect itself only runs once on mount).
+    function validWaypointsNow() {
+      return waypointsRef.current.filter(
+        (w) => Number.isFinite(w.lat) && Number.isFinite(w.lon) && (w.lat !== 0 || w.lon !== 0)
+      )
+    }
+
+    function startLineDrag(clientX: number, clientY: number, legIndex: number, valid: Waypoint[]) {
+      const afterIndex = waypointsRef.current.findIndex((w) => w.id === valid[legIndex].id)
+      lineDragRef.current = { afterIndex, started: false, previewMarker: null, startX: clientX, startY: clientY }
+    }
+
+    function updateLineDrag(e: PointerEvent) {
+      const drag = lineDragRef.current
+      if (!drag) return
+      const latlng = map.mouseEventToLatLng(e as unknown as MouseEvent)
+      if (!drag.started) {
+        if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < LINE_DRAG_START_PX) return
+        drag.started = true
+        drag.previewMarker = L.marker(latlng, { icon: midpointIcon, opacity: 0.9, interactive: false }).addTo(map)
+      }
+      drag.previewMarker?.setLatLng(latlng)
+    }
+
+    function endLineDrag(e: PointerEvent) {
+      const drag = lineDragRef.current
+      if (!drag) return false
+      lineDragRef.current = null
+      if (drag.started && drag.previewMarker) {
+        const finalLatLng = map.mouseEventToLatLng(e as unknown as MouseEvent)
+        drag.previewMarker.remove()
+        onInsertWaypointRef.current(drag.afterIndex, finalLatLng.lat, finalLatLng.lng)
+      }
+      return true
     }
 
     function handlePointerDown(e: PointerEvent) {
       if (isOnInteractiveElement(e.target)) return
+      const valid = validWaypointsNow()
+      const hit = closestRouteHit(map, valid, e.clientX, e.clientY)
+      if (hit && hit.distPx <= LINE_HIT_TOLERANCE_PX) {
+        startLineDrag(e.clientX, e.clientY, hit.legIndex, valid)
+        return
+      }
       longPressStartRef.current = { x: e.clientX, y: e.clientY }
       clearLongPressTimer()
       const { clientX, clientY } = e
@@ -445,6 +531,10 @@ export default function RouteMap({
     }
 
     function handlePointerMove(e: PointerEvent) {
+      if (lineDragRef.current) {
+        updateLineDrag(e)
+        return
+      }
       const start = longPressStartRef.current
       if (!start) return
       if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > LONG_PRESS_MOVE_CANCEL_PX) {
@@ -453,7 +543,8 @@ export default function RouteMap({
       }
     }
 
-    function handlePointerEnd() {
+    function handlePointerEnd(e: PointerEvent) {
+      if (endLineDrag(e)) return
       clearLongPressTimer()
       longPressStartRef.current = null
     }
@@ -581,78 +672,12 @@ export default function RouteMap({
       // tiles, not just dark ones.
       L.polyline(routeLatLngs, { color: '#0d1117', weight: 7, opacity: 0.6 }).addTo(layerGroup)
       L.polyline(routeLatLngs, { color: '#4fd1c5', weight: 4, opacity: 1 }).addTo(layerGroup)
-
-      // Invisible, much wider line laid on top purely as a touch/click
-      // target — the visible line above is only 4px wide, nowhere near
-      // enough to reliably grab with a finger, same reasoning as the
-      // oversized waypoint/midpoint/airfield icon hit areas elsewhere in
-      // this file. className lets the long-press handler's
-      // isOnInteractiveElement check recognize it and skip its own
-      // long-press timer, so the two gestures never both fire.
-      const hitLine = L.polyline(routeLatLngs, {
-        color: '#000',
-        weight: 24,
-        opacity: 0,
-        className: 'route-line-hit-area'
-      }).addTo(layerGroup)
-
-      // Press anywhere on the line and drag to pull a new waypoint out of
-      // whichever leg you grabbed, dropped wherever you release — replaces
-      // the old fixed-at-the-midpoint drag handles with something you can
-      // start from any point along the route, not just its exact center.
-      // A plain tap (no real movement) intentionally does nothing, so
-      // tapping the line to glance at it doesn't accidentally insert a
-      // waypoint at zero drag distance.
-      hitLine.on('mousedown', (evt) => {
-        // Cast inside the body rather than typing the callback parameter
-        // itself as LeafletMouseEvent — Leaflet's .on() typings expect a
-        // plain LeafletEvent handler, and a narrower parameter type there
-        // fails TypeScript's contravariant parameter check.
-        const e = evt as L.LeafletMouseEvent
-        const orig = e.originalEvent as PointerEvent
-        L.DomEvent.stop(orig)
-        const startX = orig.clientX
-        const startY = orig.clientY
-        const afterIndex = waypoints.findIndex((w) => w.id === valid[closestLegIndex(map, e.latlng, valid)].id)
-
-        let started = false
-        let previewMarker: L.Marker | null = null
-        // Captured as its own const, typed definitely non-null, specifically
-        // so the nested closures below can use it — TypeScript doesn't
-        // carry the `if (!map...) return` narrowing above into nested
-        // `function` declarations (only into arrow functions/expressions
-        // evaluated in place), so referencing the outer `map` directly
-        // inside handlePointerMove/endDrag would otherwise still type as
-        // Map | null there.
-        const currentMap: L.Map = map
-
-        const handlePointerMove = (ev: PointerEvent) => {
-          const latlng = currentMap.mouseEventToLatLng(ev as unknown as MouseEvent)
-          if (!started) {
-            if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < LINE_DRAG_START_PX) return
-            started = true
-            previewMarker = L.marker(latlng, { icon: midpointIcon, opacity: 0.9, interactive: false }).addTo(
-              currentMap
-            )
-          }
-          previewMarker?.setLatLng(latlng)
-        }
-
-        const endDrag = (ev: PointerEvent) => {
-          window.removeEventListener('pointermove', handlePointerMove)
-          window.removeEventListener('pointerup', endDrag)
-          window.removeEventListener('pointercancel', endDrag)
-          if (started && previewMarker) {
-            const finalLatLng = currentMap.mouseEventToLatLng(ev as unknown as MouseEvent)
-            previewMarker.remove()
-            onInsertWaypoint(afterIndex, finalLatLng.lat, finalLatLng.lng)
-          }
-        }
-
-        window.addEventListener('pointermove', handlePointerMove)
-        window.addEventListener('pointerup', endDrag)
-        window.addEventListener('pointercancel', endDrag)
-      })
+      // Press-and-drag-to-insert-a-waypoint is handled at the map-container
+      // level (see closestRouteHit / handlePointerDown in the map-creation
+      // effect above) rather than as a listener on a layer here — hit-
+      // testing against the route line is done in screen-pixel space from
+      // the raw pointer position, so no separate invisible hit-target layer
+      // is needed.
     }
 
     const idsKey = valid.map((w) => w.id).join(',')
